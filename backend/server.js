@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
+import cveRoutes from './routes/cve.js'
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,6 +27,7 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api', cveRoutes);
 
 // Pass io instance to routes via middleware
 app.use((req, res, next) => {
