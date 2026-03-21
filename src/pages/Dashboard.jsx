@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'http://127.0.0.1:5000';
 
 const getRelativeTime = (dateString) => {
   // Assuming dateString is UTC from Neon Database

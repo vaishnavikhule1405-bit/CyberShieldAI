@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Paperclip, Send, Trash2, Download, Zap } from 'lucide-react';
 
@@ -142,7 +143,9 @@ const SecurityChatbot = () => {
             fullText += delta;
             totalTokens = parsed.x_groq?.usage?.completion_tokens ?? totalTokens;
             setStreamingText(fullText);
-          } catch {}
+          } catch (e) {
+            console.warn('Failed to parse chunk', e);
+          }
         }
       }
 
