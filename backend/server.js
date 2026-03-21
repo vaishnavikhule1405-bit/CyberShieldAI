@@ -7,7 +7,13 @@ import apiRoutes from './routes/api.js';
 import cveRoutes from './routes/cve.js'
 import policyRoutes from './routes/policy.js';
 
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const httpServer = createServer(app);

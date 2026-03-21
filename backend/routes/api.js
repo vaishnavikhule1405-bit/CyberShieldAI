@@ -167,6 +167,111 @@ router.post('/scan', upload.single('file'), async (req, res) => {
   }
 });
 
+// 1.5 PHISHING / DEEPFAKE ANALYZER API
+router.post('/phish/analyze', upload.single('file'), async (req, res) => {
+  try {
+    const groqApiKey = process.env.VITE_GROQ_API_KEY;
+    if (!groqApiKey) return res.status(500).json({ error: 'Groq API key missing' });
+
+    // TEXT/RAW MESSAGE ANALYSIS
+    if (!req.file) {
+      const { text } = req.body;
+      if (!text) return res.status(400).json({ error: 'No text or file provided' });
+      
+      await logActivity(req.io, 'INFO', `Analyzing raw text payload for phishing...`);
+      
+      const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+           { role: 'system', content: 'You are an elite cybersecurity AI. Analyze the text and determine if it is phishing/scam. Respond ONLY in valid JSON format with NO markdown code blocks. Example: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}' },
+           { role: 'user', content: text }
+        ]
+      }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+      let content = groqResponse.data.choices[0].message.content;
+      content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = JSON.parse(content);
+      return res.json({ success: true, data: result });
+    }
+
+    // FILE ANALYSIS
+    const { originalname, buffer, mimetype } = req.file;
+    await logActivity(req.io, 'INFO', `Analyzing file for deepfake/phishing: ${originalname}`);
+
+    if (mimetype.startsWith('image/')) {
+        const hashSum = crypto.createHash('sha256');
+        hashSum.update(buffer);
+        const sha256 = hashSum.digest('hex');
+
+        // Extract printable strings from first 100KB to check for EXIF/manipulation markers
+        const sampleSize = Math.min(buffer.length, 100000);
+        const sampleBuffer = buffer.subarray(0, sampleSize);
+        const strings = sampleBuffer.toString('ascii').match(/[ -~]{4,}/g)?.join(' ') || '';
+        
+        try {
+          const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+               { role: 'system', content: 'You are an AI forensics expert checking image files. Analyze this extracted metadata block for signs of deepfake manipulation, AI generation (Midjourney, Stable Diffusion), or editing software (Photoshop). CRITICAL INSTRUCTION: Authentic photos always have smartphone/camera hardware EXIF headers (e.g., Apple, Samsung, Canon, Shutter Speed). If these natural camera markers are COMPLETELY MISSING and the file feels synthetically clean or only contains web/software export tags, you MUST flag it as AI-Generated/Manipulated by setting "isPhishing": true and return a high confidence. Return ONLY a valid JSON object without markdown formatting: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning based on metadata (e.g., missing natural EXIF camera headers strongly suggests AI generation)."}' },
+               { role: 'user', content: `Image hash: ${sha256}. Extracted Binary Strings:\n${strings.substring(0, 3000)}` }
+            ]
+          }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+          let content = groqResponse.data.choices[0].message.content;
+          content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+          const result = JSON.parse(content);
+          return res.json({ success: true, data: result });
+        } catch (visionErr) {
+          console.error('Image Meta API error:', visionErr.response?.data || visionErr.message);
+          return res.status(500).json({ error: 'Image analysis failed', details: visionErr.response?.data?.error?.message || visionErr.message });
+        }
+    } 
+    else if (mimetype.startsWith('video/')) {
+        // Video file metadata string extraction
+        const hashSum = crypto.createHash('sha256');
+        hashSum.update(buffer);
+        const sha256 = hashSum.digest('hex');
+
+        // Extract printable strings from first 50KB to check for manipulation markers
+        const sampleSize = Math.min(buffer.length, 50000);
+        const sampleBuffer = buffer.subarray(0, sampleSize);
+        const strings = sampleBuffer.toString('ascii').match(/[ -~]{4,}/g)?.join(' ') || '';
+        
+        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+             { role: 'system', content: 'You are identifying deepfake videos based on file metadata strings. Look for software signatures like Adobe Premiere, Python, FFmpeg, Lavf, deepfacelab, etc. Respond ONLY in valid JSON with no markdown: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning based on metadata."}' },
+             { role: 'user', content: `Video hash: ${sha256}. Metadata strings: ${strings.substring(0, 1500)}` }
+          ]
+        }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+        let content = groqResponse.data.choices[0].message.content;
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result = JSON.parse(content);
+        return res.json({ success: true, data: result });
+    }
+    else {
+        // Emails / .eml / text files
+        const fileText = buffer.toString('utf8').substring(0, 5000); // Take first 5000 chars
+        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+             { role: 'system', content: 'You are analyzing a raw email/document for phishing, malicious links, and urgency loops. Respond ONLY in valid JSON with no markdown blocks: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}' },
+             { role: 'user', content: `Filename: ${originalname}\nContent:\n${fileText}` }
+          ]
+        }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+        let content = groqResponse.data.choices[0].message.content;
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result = JSON.parse(content);
+        return res.json({ success: true, data: result });
+    }
+  } catch (err) {
+    console.error('Phish Analysis Error:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Analysis failed', details: err.response?.data?.error?.message || err.message });
+  }
+});
+
 // 2. STATS API (For summary cards)
 router.get('/stats', async (req, res) => {
   try {
