@@ -45,6 +45,25 @@ router.post('/scan', upload.single('file'), async (req, res) => {
     hashSum.update(buffer);
     const sha256 = hashSum.digest('hex');
 
+    // Check local cache first to prevent inconsistent results for the same file
+    try {
+      const cached = await pool.query('SELECT * FROM scans WHERE hash = $1 LIMIT 1', [sha256]);
+      if (cached.rows.length > 0) {
+        const scan = cached.rows[0];
+        await logActivity(req.io, 'INFO', `File matched in cache: ${originalname}`);
+        return res.json({
+          success: true,
+          data: {
+            status: scan.status,
+            confidence: scan.confidence,
+            isMalicious: scan.is_malicious,
+          }
+        });
+      }
+    } catch (dbErr) {
+      console.error('DB Cache Error:', dbErr);
+    }
+
     let analysisStats = null;
     let scanId = sha256;
 
@@ -128,7 +147,7 @@ router.post('/scan', upload.single('file'), async (req, res) => {
     // Save to DB
     const insertRes = await pool.query(
       'INSERT INTO scans (filename, hash, status, confidence, is_malicious) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [originalname, scanId.substring(0, 100), status, confidence, isMalicious]
+      [originalname, sha256, status, confidence, isMalicious]
     );
 
     await logActivity(req.io, isMalicious ? 'CRITICAL' : 'INFO', `AI scan complete for ${originalname}. Found malicious engines: ${maliciousCount}`);
