@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Shield, Activity, Bug, Mail, AlertTriangle, MessageSquare, Terminal } from 'lucide-react';
+import { Shield, Activity, Bug, Mail, AlertTriangle, MessageSquare, Terminal, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Sidebar = () => {
@@ -10,6 +10,7 @@ const Sidebar = () => {
     { name: 'Vulnerabilities', path: '/vulnerabilities', icon: AlertTriangle },
     { name: 'Security Chatbot', path: '/chatbot', icon: MessageSquare },
     { name: 'Honeypot Logs', path: '/honeypot', icon: Terminal },
+    { name: 'Policy Chatbot', path: '/policy', icon: FileText },
   ];
 
   return (

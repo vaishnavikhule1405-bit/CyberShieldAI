@@ -7,6 +7,7 @@ import PhishingDetector from './pages/PhishingDetector';
 import VulnerabilityPrioritizer from './pages/VulnerabilityPrioritizer';
 import SecurityChatbot from './pages/SecurityChatbot';
 import HoneypotLogs from './pages/HoneypotLogs';
+import PolicyChatbot from './pages/PolicyChatbot';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/vulnerabilities" element={<VulnerabilityPrioritizer />} />
           <Route path="/chatbot" element={<SecurityChatbot />} />
           <Route path="/honeypot" element={<HoneypotLogs />} />
+          <Route path="/policy" element={<PolicyChatbot />} />
         </Route>
       </Routes>
     </Router>
