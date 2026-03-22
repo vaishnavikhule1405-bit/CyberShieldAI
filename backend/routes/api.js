@@ -207,7 +207,6 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
     if (mimetype.startsWith('image/')) {
         const hashSum = crypto.createHash('sha256');
         hashSum.update(buffer);
-        const sha256 = hashSum.digest('hex');
 
         // Extract printable strings from first 100KB to check for EXIF/manipulation markers
         const sampleSize = Math.min(buffer.length, 100000);
@@ -223,9 +222,30 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
             return res.json({ success: true, data: { isPhishing: true, confidence: 95, explanation: "Deepfake threat detected: Generative AI metadata or watermark identified." } });
           }
 
+          // Llama 4 Scout's base64 limit is 4MB — fall back to metadata heuristics for larger images
+          const MAX_BASE64_BYTES = 4 * 1024 * 1024;
+          if (buffer.length > MAX_BASE64_BYTES) {
+            // Use text-only model to analyze metadata strings for AI generation markers
+            const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+              model: 'llama-3.3-70b-versatile',
+              response_format: { type: 'json_object' },
+              max_tokens: 256,
+              messages: [
+                { role: 'system', content: 'You are a forensic metadata analyst. Large images cannot be sent to vision AI. Analyze the filename and embedded metadata strings for any AI generation markers (MidJourney, Stable Diffusion, DALL-E, Firefly, etc). Respond ONLY in valid JSON: {"isPhishing": true/false, "confidence": 0-100, "explanation": "brief reason"}' },
+                { role: 'user', content: `Filename: ${originalname}\nMetadata strings: ${strings.substring(0, 2000)}` }
+              ]
+            }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' } });
+
+            let content = groqResponse.data.choices[0].message.content;
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+            return res.json({ success: true, data: result });
+          }
+
           const base64Image = buffer.toString('base64');
           const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-            model: 'llama-3.2-90b-vision-preview',
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            max_tokens: 256,
             messages: [
                {
                  role: 'user',
@@ -242,8 +262,27 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
           const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
           return res.json({ success: true, data: result });
         } catch (visionErr) {
-          console.error('Image Meta API error:', visionErr.response?.data || visionErr.message);
-          return res.status(500).json({ error: 'Image analysis failed', details: visionErr.response?.data?.error?.message || visionErr.message });
+          // Vision model rejected the image (too small, invalid format, size limit, etc.)
+          // Fall back to text-only metadata heuristic analysis — never return 500 to the user
+          console.warn('Vision AI rejected image, falling back to metadata analysis:', visionErr.response?.data?.error?.message || visionErr.message);
+          try {
+            const fallbackRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+              model: 'llama-3.3-70b-versatile',
+              response_format: { type: 'json_object' },
+              max_tokens: 256,
+              messages: [
+                { role: 'system', content: 'You are a forensic metadata analyst. The image could not be processed by vision AI. Analyze the filename and any embedded metadata strings for AI generation markers (MidJourney, DALL-E, Stable Diffusion, Firefly, etc.). Respond ONLY in valid JSON: {"isPhishing": true/false, "confidence": 0-100, "explanation": "brief reason"}' },
+                { role: 'user', content: `Filename: ${originalname}\nMetadata strings: ${strings.substring(0, 2000)}` }
+              ]
+            }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' } });
+            let fbContent = fallbackRes.data.choices[0].message.content;
+            const fbMatch = fbContent.match(/\{[\s\S]*\}/);
+            const fbResult = fbMatch ? JSON.parse(fbMatch[0]) : JSON.parse(fbContent.replace(/```json/g, '').replace(/```/g, '').trim());
+            return res.json({ success: true, data: fbResult });
+          } catch (fbErr) {
+            console.error('Fallback metadata analysis also failed:', fbErr.message);
+            return res.status(500).json({ error: 'Image analysis failed', details: visionErr.response?.data?.error?.message || visionErr.message });
+          }
         }
     } 
     else if (mimetype.startsWith('video/')) {
