@@ -217,8 +217,8 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'rgba(5,10,20,0.95)', border: '1px solid rgba(0,243,255,0.25)', borderRadius: 8, padding: '8px 14px' }}>
-      <p style={{ fontFamily: 'monospace', fontSize: 10, color: '#64748b', marginBottom: 3 }}>{label}</p>
-      <p style={{ fontFamily: 'monospace', fontSize: 12, color: '#00f3ff', fontWeight: 700 }}>{payload[0].value} threats</p>
+      <p style={{ fontFamily: 'monospace', fontSize: 13, color: '#64748b', marginBottom: 3 }}>{label}</p>
+      <p style={{ fontFamily: 'monospace', fontSize: 15, color: '#00f3ff', fontWeight: 700 }}>{payload[0].value} threats</p>
     </div>
   );
 };
@@ -263,7 +263,7 @@ const MetricCard = ({ title, value, subtitle, color, icon: Icon, delay, index })
       <div className="flex items-center justify-between mb-3">
         <span
           className="font-mono uppercase tracking-[0.18em]"
-          style={{ fontSize: 9, color: `rgba(${p.rgb},0.6)` }}
+          style={{ fontSize: 12, color: `rgba(${p.rgb},0.85)` }}
         >
           {String(index + 1).padStart(2, '0')} / {title}
         </span>
@@ -289,7 +289,7 @@ const MetricCard = ({ title, value, subtitle, color, icon: Icon, delay, index })
       </div>
 
       {/* subtitle */}
-      <div className="font-mono" style={{ fontSize: 10, color: '#334155' }}>{subtitle}</div>
+      <div className="font-mono" style={{ fontSize: 13, color: '#64748b' }}>{subtitle}</div>
 
       {/* animated bottom line */}
       <div
@@ -331,14 +331,14 @@ const FeedItem = ({ type, text, time, index }) => {
       <div className="shrink-0 mt-0.5">
         <span
           className="font-mono font-black tracking-widest"
-          style={{ fontSize: 8, color: c.color, letterSpacing: '0.15em' }}
+          style={{ fontSize: 11, color: c.color, letterSpacing: '0.15em' }}
         >
           [{c.label}]
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-mono truncate" style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.5 }}>{text}</p>
-        <p className="font-mono" style={{ fontSize: 8, color: '#334155', marginTop: 2 }}>{time}</p>
+        <p className="font-mono truncate" style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>{text}</p>
+        <p className="font-mono" style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{time}</p>
       </div>
     </motion.div>
   );
@@ -428,7 +428,7 @@ const Dashboard = () => {
             {/* overline */}
             <div className="flex items-center gap-3 mb-2">
               <div style={{ width: 32, height: 1, background: 'rgba(0,243,255,0.5)' }} />
-              <span className="font-mono uppercase tracking-[0.25em]" style={{ fontSize: 9, color: 'rgba(0,243,255,0.5)' }}>
+              <span className="font-mono uppercase tracking-[0.25em]" style={{ fontSize: 12, color: 'rgba(0,243,255,0.7)' }}>
                 Security Operations / Dashboard
               </span>
             </div>
@@ -441,7 +441,7 @@ const Dashboard = () => {
                 MATRIX
               </span>
             </h1>
-            <p className="font-mono mt-2" style={{ fontSize: 10, color: '#334155', letterSpacing: '0.12em' }}>
+            <p className="font-mono mt-2" style={{ fontSize: 13, color: '#475569', letterSpacing: '0.12em' }}>
               UPLINK ESTABLISHED · NODE ALPHA-7 · LATENCY 12ms
             </p>
           </div>
@@ -458,7 +458,7 @@ const Dashboard = () => {
               className="rounded-full animate-pulse"
               style={{ width: 6, height: 6, background: '#39ff14', boxShadow: '0 0 8px #39ff14', display: 'block' }}
             />
-            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 9, color: '#39ff14' }}>
+            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 12, color: '#39ff14' }}>
               All Systems Online
             </span>
           </div>
@@ -503,18 +503,18 @@ const Dashboard = () => {
                 <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.06)' }} />
                 <div className="flex items-center gap-2">
                   <Activity size={13} style={{ color: '#00f3ff' }} />
-                  <span className="font-mono font-bold" style={{ fontSize: 11, color: '#cbd5e1', letterSpacing: '0.08em' }}>
+                  <span className="font-mono font-bold" style={{ fontSize: 14, color: '#cbd5e1', letterSpacing: '0.08em' }}>
                     THREAT ORIGIN VECTORS
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono" style={{ fontSize: 9, color: '#334155', letterSpacing: '0.1em' }}>LAST 7H</span>
+                <span className="font-mono" style={{ fontSize: 12, color: '#475569', letterSpacing: '0.1em' }}>LAST 7H</span>
                 <div
                   className="px-2 py-0.5 rounded"
                   style={{ background: 'rgba(0,243,255,0.06)', border: '1px solid rgba(0,243,255,0.15)' }}
                 >
-                  <span className="font-mono font-bold" style={{ fontSize: 8, color: '#00f3ff', letterSpacing: '0.15em' }}>● LIVE</span>
+                  <span className="font-mono font-bold" style={{ fontSize: 11, color: '#00f3ff', letterSpacing: '0.15em' }}>● LIVE</span>
                 </div>
               </div>
             </div>
@@ -534,11 +534,11 @@ const Dashboard = () => {
                   <XAxis
                     dataKey="time"
                     stroke="transparent"
-                    tick={{ fill: '#334155', fontSize: 9, fontFamily: 'monospace' }}
+                    tick={{ fill: '#475569', fontSize: 12, fontFamily: 'monospace' }}
                   />
                   <YAxis
                     stroke="transparent"
-                    tick={{ fill: '#334155', fontSize: 9, fontFamily: 'monospace' }}
+                    tick={{ fill: '#475569', fontSize: 12, fontFamily: 'monospace' }}
                     allowDecimals={false}
                   />
                   <Tooltip content={<CustomTooltip />} />
@@ -567,8 +567,8 @@ const Dashboard = () => {
                 { label: 'Avg / Hour', val: threatsData.length ? (threatsData.reduce((s, d) => s + (d.threats || 0), 0) / threatsData.length).toFixed(1) : 0 },
               ].map(({ label, val }) => (
                 <div key={label} className="flex flex-col items-center py-3 px-4" style={{ borderColor: 'rgba(0,243,255,0.07)' }}>
-                  <span className="font-mono font-bold" style={{ fontSize: 15, color: '#00f3ff' }}>{val}</span>
-                  <span className="font-mono uppercase tracking-widest" style={{ fontSize: 8, color: '#334155', marginTop: 2 }}>{label}</span>
+                  <span className="font-mono font-bold" style={{ fontSize: 16, color: '#00f3ff' }}>{val}</span>
+                  <span className="font-mono uppercase tracking-widest" style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>{label}</span>
                 </div>
               ))}
             </div>
@@ -595,11 +595,11 @@ const Dashboard = () => {
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <ShieldAlert size={12} style={{ color: '#ff003c' }} />
-                  <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 10, color: '#e2e8f0' }}>
+                  <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 13, color: '#e2e8f0' }}>
                     Live Activity
                   </span>
                 </div>
-                <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+                <span className="font-mono" style={{ fontSize: 11, color: '#475569', letterSpacing: '0.1em' }}>
                   EVENT STREAM
                 </span>
               </div>
@@ -608,7 +608,7 @@ const Dashboard = () => {
                 style={{ background: 'rgba(255,0,60,0.08)', border: '1px solid rgba(255,0,60,0.2)' }}
               >
                 <span className="animate-pulse rounded-full" style={{ width: 5, height: 5, background: '#ff003c', display: 'block', boxShadow: '0 0 5px #ff003c' }} />
-                <span className="font-mono font-bold" style={{ fontSize: 8, color: '#ff003c', letterSpacing: '0.15em' }}>REC</span>
+                <span className="font-mono font-bold" style={{ fontSize: 11, color: '#ff003c', letterSpacing: '0.15em' }}>REC</span>
               </div>
             </div>
 
@@ -619,7 +619,7 @@ const Dashboard = () => {
                   <div style={{ width: 24, height: 24, border: '1px solid rgba(0,243,255,0.15)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Cpu size={12} style={{ color: 'rgba(0,243,255,0.3)' }} />
                   </div>
-                  <span className="font-mono" style={{ fontSize: 9, color: '#1e293b', letterSpacing: '0.1em' }}>AWAITING EVENTS</span>
+                  <span className="font-mono" style={{ fontSize: 12, color: '#334155', letterSpacing: '0.1em' }}>AWAITING EVENTS</span>
                 </div>
               ) : (
                 activityFeed.map((item, idx) => (
@@ -639,10 +639,10 @@ const Dashboard = () => {
               className="px-5 py-3 shrink-0 flex items-center justify-between"
               style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
             >
-              <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+              <span className="font-mono" style={{ fontSize: 11, color: '#334155', letterSpacing: '0.1em' }}>
                 {activityFeed.length} EVENTS
               </span>
-              <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+              <span className="font-mono" style={{ fontSize: 11, color: '#334155', letterSpacing: '0.1em' }}>
                 REFRESH 10s
               </span>
             </div>
@@ -657,7 +657,7 @@ const Dashboard = () => {
           className="flex items-center justify-between"
           style={{ paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.04)' }}
         >
-          <span className="font-mono uppercase tracking-[0.2em]" style={{ fontSize: 8, color: '#1e293b' }}>
+          <span className="font-mono uppercase tracking-[0.2em]" style={{ fontSize: 11, color: '#334155' }}>
             CyberShield AI · Built for the Digital Battlefield
           </span>
           <div className="flex items-center gap-4">
@@ -668,7 +668,7 @@ const Dashboard = () => {
             ].map(({ label, active }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#39ff14' : '#ff003c', display: 'block' }} />
-                <span className="font-mono" style={{ fontSize: 7, color: '#1e293b', letterSpacing: '0.12em' }}>{label}</span>
+                <span className="font-mono" style={{ fontSize: 11, color: '#334155', letterSpacing: '0.12em' }}>{label}</span>
               </div>
             ))}
           </div>
