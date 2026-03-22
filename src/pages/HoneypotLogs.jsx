@@ -255,7 +255,7 @@ const StatChip = ({ label, value, color }) => (
     <span className="font-mono font-black" style={{ fontSize: 16, color, textShadow: `0 0 12px ${color}55` }}>
       {value}
     </span>
-    <span className="font-mono uppercase tracking-widest" style={{ fontSize: 8, color: '#1e293b', marginTop: 2 }}>
+    <span className="font-mono uppercase tracking-widest" style={{ fontSize: 11, color: '#334155', marginTop: 2 }}>
       {label}
     </span>
   </div>
@@ -275,7 +275,7 @@ const LogRow = ({ log, index }) => (
       gap: '0 12px',
       paddingTop: 6,
       paddingBottom: 6,
-      fontSize: 10,
+      fontSize: 12,
     }}
   >
     <span style={{ color: '#334155' }}>[{log.time}]</span>
@@ -353,7 +353,7 @@ const HoneypotLogs = () => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div style={{ width: 28, height: 1, background: 'rgba(255,60,0,0.6)' }} />
-              <span className="font-mono uppercase tracking-[0.22em]" style={{ fontSize: 9, color: 'rgba(255,60,0,0.6)' }}>
+              <span className="font-mono uppercase tracking-[0.22em]" style={{ fontSize: 11, color: 'rgba(255,60,0,0.6)' }}>
                 Module 05 / Deception Network
               </span>
             </div>
@@ -366,7 +366,7 @@ const HoneypotLogs = () => {
                 MONITOR
               </span>
             </h1>
-            <p className="font-mono mt-1" style={{ fontSize: 10, color: '#334155', letterSpacing: '0.1em' }}>
+            <p className="font-mono mt-1" style={{ fontSize: 12, color: '#334155', letterSpacing: '0.1em' }}>
               LIVE DECEPTION TRAFFIC · TAR-PIT ENGINE · CREDENTIAL HARVESTING · DECOY RESPONSES
             </p>
           </div>
@@ -382,7 +382,7 @@ const HoneypotLogs = () => {
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ duration: 0.8, repeat: Infinity }}
             />
-            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 9, color: '#ff003c' }}>
+            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 11, color: '#ff003c' }}>
               Live Feed
             </span>
           </div>
@@ -411,8 +411,8 @@ const HoneypotLogs = () => {
               { label: 'Refresh', val: '1.2s' },
             ].map(({ label, val }) => (
               <div key={label} className="text-right">
-                <p className="font-mono font-bold" style={{ fontSize: 11, color: '#334155' }}>{val}</p>
-                <p className="font-mono uppercase tracking-widest" style={{ fontSize: 7, color: '#1e293b' }}>{label}</p>
+                <p className="font-mono font-bold" style={{ fontSize: 13, color: '#334155' }}>{val}</p>
+                <p className="font-mono uppercase tracking-widest" style={{ fontSize: 13, color: '#475569' }}>{label}</p>
               </div>
             ))}
           </div>
@@ -446,7 +446,7 @@ const HoneypotLogs = () => {
                   ))}
                 </div>
                 <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.06)' }} />
-                <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#334155' }}>
+                <span className="font-mono uppercase tracking-widest" style={{ fontSize: 13, color: '#475569' }}>
                   honeypot@cybershield:~$
                 </span>
               </div>
@@ -460,7 +460,7 @@ const HoneypotLogs = () => {
                 ].map(({ label, color }) => (
                   <div key={label} className="flex items-center gap-1">
                     <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, display: 'block' }} />
-                    <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>{label}</span>
+                    <span className="font-mono" style={{ fontSize: 12, color: '#475569', letterSpacing: '0.1em' }}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -476,7 +476,7 @@ const HoneypotLogs = () => {
               }}
             >
               {['TIMESTAMP', 'SOURCE IP', 'PORT', 'METHOD', 'SIZE', 'DECOY ACTION'].map(h => (
-                <span key={h} className="font-mono uppercase tracking-widest" style={{ fontSize: 7, color: '#1e293b' }}>{h}</span>
+                <span key={h} className="font-mono uppercase tracking-widest" style={{ fontSize: 13, color: '#475569' }}>{h}</span>
               ))}
             </div>
 
@@ -502,8 +502,8 @@ const HoneypotLogs = () => {
               className="flex items-center gap-2 px-5 py-3 shrink-0"
               style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
             >
-              <span className="font-mono font-bold" style={{ fontSize: 12, color: '#39ff14' }}>$</span>
-              <span className="font-mono" style={{ fontSize: 10, color: '#1e293b' }}>
+              <span className="font-mono font-bold" style={{ fontSize: 14, color: '#39ff14' }}>$</span>
+              <span className="font-mono" style={{ fontSize: 12, color: '#334155' }}>
                 tail -f /var/log/honeypot/decoy.log
               </span>
               <motion.span
@@ -532,7 +532,7 @@ const HoneypotLogs = () => {
                 backdropFilter: 'blur(16px)',
               }}
             >
-              <p className="font-mono uppercase tracking-widest mb-4" style={{ fontSize: 8, color: '#334155' }}>
+              <p className="font-mono uppercase tracking-widest mb-4" style={{ fontSize: 12, color: '#475569' }}>
                 Attack Breakdown
               </p>
               {[
@@ -544,8 +544,8 @@ const HoneypotLogs = () => {
               ].map(({ label, color, pct }) => (
                 <div key={label} className="mb-3">
                   <div className="flex justify-between mb-1">
-                    <span className="font-mono" style={{ fontSize: 9, color: '#475569' }}>{label}</span>
-                    <span className="font-mono font-bold" style={{ fontSize: 9, color }}>{pct}%</span>
+                    <span className="font-mono" style={{ fontSize: 11, color: '#475569' }}>{label}</span>
+                    <span className="font-mono font-bold" style={{ fontSize: 11, color }}>{pct}%</span>
                   </div>
                   <div className="rounded-full overflow-hidden" style={{ height: 3, background: 'rgba(255,255,255,0.04)' }}>
                     <motion.div
@@ -572,7 +572,7 @@ const HoneypotLogs = () => {
                 backdropFilter: 'blur(16px)',
               }}
             >
-              <p className="font-mono uppercase tracking-widest mb-3" style={{ fontSize: 8, color: '#334155' }}>
+              <p className="font-mono uppercase tracking-widest mb-3" style={{ fontSize: 12, color: '#475569' }}>
                 Top Attacker IPs
               </p>
               {mockIPs.map((ip, i) => (
@@ -583,9 +583,9 @@ const HoneypotLogs = () => {
                 >
                   <div className="flex items-center gap-2">
                     <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#ff003c', display: 'block', opacity: 0.7 }} />
-                    <span style={{ fontSize: 10, color: '#475569' }}>{ip}</span>
+                    <span style={{ fontSize: 12, color: '#475569' }}>{ip}</span>
                   </div>
-                  <span style={{ fontSize: 9, color: '#1e293b' }}>
+                  <span style={{ fontSize: 12, color: '#334155' }}>
                     {Math.floor(Math.random() * 80 + 10)} hits
                   </span>
                 </div>
@@ -601,7 +601,7 @@ const HoneypotLogs = () => {
                 backdropFilter: 'blur(16px)',
               }}
             >
-              <p className="font-mono uppercase tracking-widest mb-3" style={{ fontSize: 8, color: '#334155' }}>
+              <p className="font-mono uppercase tracking-widest mb-3" style={{ fontSize: 12, color: '#475569' }}>
                 Active Decoy Services
               </p>
               {[
@@ -616,8 +616,8 @@ const HoneypotLogs = () => {
                   style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}
                 >
                   <div>
-                    <p className="font-mono font-bold" style={{ fontSize: 10, color: '#475569' }}>{name}</p>
-                    <p className="font-mono" style={{ fontSize: 8, color: '#1e293b' }}>{port}</p>
+                    <p className="font-mono font-bold" style={{ fontSize: 12, color: '#475569' }}>{name}</p>
+                    <p className="font-mono" style={{ fontSize: 12, color: '#334155' }}>{port}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <motion.span
@@ -625,7 +625,7 @@ const HoneypotLogs = () => {
                       animate={{ opacity: [1, 0.4, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity, delay: Math.random() }}
                     />
-                    <span className="font-mono font-bold" style={{ fontSize: 8, color: '#39ff14', letterSpacing: '0.1em' }}>{status}</span>
+                    <span className="font-mono font-bold" style={{ fontSize: 11, color: '#39ff14', letterSpacing: '0.1em' }}>{status}</span>
                   </div>
                 </div>
               ))}
@@ -642,7 +642,7 @@ const HoneypotLogs = () => {
           className="flex items-center justify-between shrink-0"
           style={{ paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.04)' }}
         >
-          <span className="font-mono uppercase tracking-[0.2em]" style={{ fontSize: 8, color: '#1e293b' }}>
+          <span className="font-mono uppercase tracking-[0.2em]" style={{ fontSize: 12, color: '#334155' }}>
             CyberShield AI · Honeypot Deception Engine v2
           </span>
           <div className="flex items-center gap-4">
@@ -653,7 +653,7 @@ const HoneypotLogs = () => {
             ].map(({ label, active }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span style={{ width: 4, height: 4, borderRadius: '50%', background: active ? '#39ff14' : '#ff003c', display: 'block' }} />
-                <span className="font-mono" style={{ fontSize: 7, color: '#1e293b', letterSpacing: '0.12em' }}>{label}</span>
+                <span className="font-mono" style={{ fontSize: 11, color: '#334155', letterSpacing: '0.12em' }}>{label}</span>
               </div>
             ))}
           </div>
