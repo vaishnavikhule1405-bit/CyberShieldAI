@@ -402,7 +402,7 @@ const SecurityChatbot = () => {
   };
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ background: '#03060f', height: 'calc(100vh - 48px)' }}>
+    <div className="relative w-full h-full overflow-hidden" style={{ background: '#03060f', height: '100%' }}>
       <ChatBackground />
 
       {/* vignette */}
