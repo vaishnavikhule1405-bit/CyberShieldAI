@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Paperclip, Send, Trash2, Download, Zap } from 'lucide-react';
 
+/* ── ALL ORIGINAL CONSTANTS (unchanged) ── */
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
@@ -27,7 +28,7 @@ const QUICK_PROMPTS = [
   { label: '🦠 Ransomware IOCs', prompt: 'List key indicators of compromise (IOCs) for a ransomware infection.' },
 ];
 
-// Simple code block + bold renderer
+/* ── ALL ORIGINAL RENDER FUNCTION (unchanged) ── */
 const renderContent = (content) => {
   const parts = content.split(/(```[\s\S]*?```)/g);
   return parts.map((part, i) => {
@@ -36,18 +37,27 @@ const renderContent = (content) => {
       const lang = lines[0].trim() || 'bash';
       const code = lines.slice(1).join('\n').trim();
       return (
-        <div key={i} className="my-3 rounded-lg overflow-hidden border border-cyber-neonCyan/30">
-          <div className="flex items-center justify-between bg-black/80 px-4 py-2 border-b border-cyber-neonCyan/20">
-            <span className="text-xs text-cyber-neonCyan font-mono uppercase tracking-widest">{lang}</span>
+        <div key={i} className="my-3 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,243,255,0.15)' }}>
+          <div
+            className="flex items-center justify-between px-4 py-2"
+            style={{ background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(0,243,255,0.1)' }}
+          >
+            <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#00f3ff' }}>{lang}</span>
             <button
               onClick={() => navigator.clipboard.writeText(code)}
-              className="text-xs text-gray-500 hover:text-cyber-neonCyan transition-colors font-mono"
+              className="font-mono transition-colors"
+              style={{ fontSize: 9, color: '#334155', letterSpacing: '0.1em' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#00f3ff'}
+              onMouseLeave={e => e.currentTarget.style.color = '#334155'}
             >
               [ copy ]
             </button>
           </div>
-          <pre className="bg-black/60 p-4 overflow-x-auto text-xs text-cyber-neonGreen leading-relaxed">
-            <code>{code}</code>
+          <pre
+            className="overflow-x-auto custom-scrollbar"
+            style={{ background: 'rgba(0,0,0,0.4)', padding: '12px 16px', margin: 0 }}
+          >
+            <code style={{ fontSize: 11, color: '#39ff14', fontFamily: 'monospace', lineHeight: 1.6 }}>{code}</code>
           </pre>
         </div>
       );
@@ -55,7 +65,7 @@ const renderContent = (content) => {
     const formatted = part.split('\n').map((line, j) => {
       const boldParts = line.split(/(\*\*.*?\*\*)/g).map((seg, k) => {
         if (seg.startsWith('**') && seg.endsWith('**')) {
-          return <strong key={k} className="text-white font-bold">{seg.slice(2, -2)}</strong>;
+          return <strong key={k} style={{ color: '#f1f5f9', fontWeight: 700 }}>{seg.slice(2, -2)}</strong>;
         }
         return seg;
       });
@@ -65,7 +75,209 @@ const renderContent = (content) => {
   });
 };
 
+/* ─────────────────────────────────────────
+   ANIMATED BACKGROUND
+───────────────────────────────────────── */
+const ChatBackground = () => {
+  useState(() => {
+    const tryInit = () => {
+      const canvas = document.getElementById('chat-bg-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let animId, t = 0;
+
+      const resize = () => {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      const nodes = Array.from({ length: 20 }, () => ({
+        x: Math.random(), y: Math.random(),
+        vx: (Math.random() - 0.5) * 0.00025,
+        vy: (Math.random() - 0.5) * 0.00025,
+        r: Math.random() * 1.1 + 0.3,
+        phase: Math.random() * Math.PI * 2,
+      }));
+
+      const orbs = [
+        { x: 0.08, y: 0.15, hue: 180, size: 0.22 },
+        { x: 0.92, y: 0.7, hue: 200, size: 0.18 },
+        { x: 0.5, y: 0.9, hue: 160, size: 0.15 },
+      ];
+
+      const draw = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#03060f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        orbs.forEach((o, i) => {
+          const pulse = Math.sin(t * 0.006 + i * 1.5) * 0.3 + 0.7;
+          const r = o.size * Math.min(canvas.width, canvas.height) * pulse;
+          const gx = o.x * canvas.width, gy = o.y * canvas.height;
+          const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+          g.addColorStop(0, `hsla(${o.hue},100%,55%,0.065)`);
+          g.addColorStop(0.5, `hsla(${o.hue},100%,50%,0.025)`);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill();
+        });
+
+        /* subtle dot grid */
+        for (let x = 0; x < canvas.width; x += 36) {
+          for (let y = 0; y < canvas.height; y += 36) {
+            const alpha = 0.03 + Math.sin(t * 0.015 + x * 0.01 + y * 0.01) * 0.015;
+            ctx.beginPath();
+            ctx.arc(x, y, 0.7, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(0,243,255,${alpha})`;
+            ctx.fill();
+          }
+        }
+
+        nodes.forEach(n => {
+          n.x += n.vx; n.y += n.vy;
+          if (n.x < 0 || n.x > 1) n.vx *= -1;
+          if (n.y < 0 || n.y > 1) n.vy *= -1;
+        });
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = (nodes[i].x - nodes[j].x) * canvas.width;
+            const dy = (nodes[i].y - nodes[j].y) * canvas.height;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 130) {
+              ctx.beginPath();
+              ctx.strokeStyle = `rgba(0,243,255,${(1 - dist / 130) * 0.04})`;
+              ctx.lineWidth = 0.4;
+              ctx.moveTo(nodes[i].x * canvas.width, nodes[i].y * canvas.height);
+              ctx.lineTo(nodes[j].x * canvas.width, nodes[j].y * canvas.height);
+              ctx.stroke();
+            }
+          }
+        }
+
+        t++;
+        animId = requestAnimationFrame(draw);
+      };
+      draw();
+      return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+    };
+    setTimeout(tryInit, 80);
+  });
+
+  return <canvas id="chat-bg-canvas" className="absolute inset-0 w-full h-full pointer-events-none z-0" />;
+};
+
+/* ─────────────────────────────────────────
+   TYPING DOTS
+───────────────────────────────────────── */
+const TypingDots = () => (
+  <div className="flex items-center gap-1.5 py-1">
+    {[0, 1, 2].map(i => (
+      <motion.span
+        key={i}
+        style={{ width: 5, height: 5, borderRadius: '50%', background: '#00f3ff', display: 'block' }}
+        animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.1, 0.8] }}
+        transition={{ duration: 1, repeat: Infinity, delay: i * 0.22 }}
+      />
+    ))}
+  </div>
+);
+
+/* ─────────────────────────────────────────
+   MESSAGE BUBBLE
+───────────────────────────────────────── */
+const MessageBubble = ({ msg, isStreaming, streamText }) => {
+  const isUser = msg.role === 'user';
+  const content = isStreaming ? streamText : msg.content;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+    >
+      {/* avatar */}
+      <div
+        className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black self-end mb-1"
+        style={{
+          fontSize: 9,
+          background: isUser ? 'rgba(0,243,255,0.1)' : 'rgba(57,255,20,0.08)',
+          border: `1px solid ${isUser ? 'rgba(0,243,255,0.25)' : 'rgba(57,255,20,0.2)'}`,
+          color: isUser ? '#00f3ff' : '#39ff14',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {isUser ? 'YOU' : 'NX'}
+      </div>
+
+      {/* bubble */}
+      <div
+        className="max-w-[80%] rounded-2xl px-4 py-3 font-mono text-sm leading-relaxed"
+        style={{
+          fontSize: 12,
+          background: isUser
+            ? 'rgba(0,243,255,0.07)'
+            : msg.isError
+              ? 'rgba(255,0,60,0.07)'
+              : 'rgba(5,9,18,0.9)',
+          border: `1px solid ${isUser ? 'rgba(0,243,255,0.18)' : msg.isError ? 'rgba(255,0,60,0.2)' : 'rgba(255,255,255,0.06)'}`,
+          color: isUser ? '#94a3b8' : msg.isError ? '#ff003c' : '#64748b',
+          borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        {!isUser && !msg.isError && (
+          <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39ff14', display: 'block', boxShadow: '0 0 5px #39ff14' }} />
+            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 8, color: '#39ff14' }}>NEXUS</span>
+            <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', marginLeft: 'auto' }}>
+              {new Date(msg.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        )}
+        {isUser && (
+          <div className="flex justify-end mb-1.5">
+            <span className="font-mono" style={{ fontSize: 8, color: '#1e293b' }}>
+              {new Date(msg.timestamp).toLocaleTimeString()}
+            </span>
+          </div>
+        )}
+        <div style={{ color: isUser ? '#94a3b8' : '#64748b', lineHeight: 1.7 }}>
+          {renderContent(content)}
+          {isStreaming && (
+            <span
+              className="inline-block w-2 h-4 ml-0.5 align-middle"
+              style={{ background: '#00f3ff', animation: 'pulse 0.8s infinite' }}
+            />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+/* ─────────────────────────────────────────
+   DOC ITEM (sidebar)
+───────────────────────────────────────── */
+const DocItem = ({ name, size }) => (
+  <div
+    className="flex justify-between items-center px-3 py-2.5 rounded-xl font-mono cursor-pointer transition-all duration-200"
+    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)', fontSize: 10 }}
+    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,243,255,0.2)'}
+    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'}
+  >
+    <span className="truncate pr-2" style={{ color: '#334155' }}>{name}</span>
+    <span style={{ color: '#00f3ff', fontSize: 9, flexShrink: 0 }}>{size}</span>
+  </div>
+);
+
+/* ══════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════ */
 const SecurityChatbot = () => {
+  /* ── ALL ORIGINAL STATE (unchanged) ── */
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -80,11 +292,13 @@ const SecurityChatbot = () => {
   const [tokenCount, setTokenCount] = useState(0);
   const endOfMessagesRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
+  /* ── ALL ORIGINAL SEND LOGIC (unchanged) ── */
   const handleSend = useCallback(async (overrideInput) => {
     const query = overrideInput ?? input;
     if (!query.trim() || isStreaming) return;
@@ -105,10 +319,7 @@ const SecurityChatbot = () => {
 
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_API_KEY}` },
         signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
@@ -164,6 +375,7 @@ const SecurityChatbot = () => {
     }
   }, [input, isStreaming, messages]);
 
+  /* ── ALL ORIGINAL HANDLERS (unchanged) ── */
   const handleAbort = () => {
     abortControllerRef.current?.abort();
     setIsStreaming(false);
@@ -190,187 +402,369 @@ const SecurityChatbot = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-6rem)] flex gap-6 max-w-6xl mx-auto">
+    <div className="relative w-full overflow-hidden" style={{ background: '#03060f', height: 'calc(100vh - 48px)' }}>
+      <ChatBackground />
 
-      {/* Sidebar */}
-      <div className="w-72 glass-panel hidden md:flex flex-col p-4 gap-4">
-        <div>
-          <h3 className="font-display text-sm text-cyber-neonCyan border-b border-cyber-neonCyan/30 pb-2 mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4" /> QUICK ACTIONS
-          </h3>
-          <div className="space-y-2">
+      {/* vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[1]"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)' }}
+      />
+
+      <div className="relative z-10 h-full flex gap-5 p-6">
+
+        {/* ── SIDEBAR ── */}
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="hidden md:flex flex-col gap-4 w-64 shrink-0"
+        >
+          {/* NEXUS identity card */}
+          <div
+            className="rounded-2xl p-4"
+            style={{
+              background: 'rgba(5,9,18,0.9)',
+              border: '1px solid rgba(0,243,255,0.12)',
+              backdropFilter: 'blur(16px)',
+              boxShadow: '0 0 30px rgba(0,243,255,0.05)',
+            }}
+          >
+            {/* avatar */}
+            <div className="flex items-center gap-3 mb-4 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-black"
+                style={{
+                  background: isStreaming ? 'rgba(57,255,20,0.1)' : 'rgba(0,243,255,0.08)',
+                  border: `1px solid ${isStreaming ? 'rgba(57,255,20,0.3)' : 'rgba(0,243,255,0.2)'}`,
+                  color: isStreaming ? '#39ff14' : '#00f3ff',
+                  fontSize: 13,
+                  boxShadow: isStreaming ? '0 0 16px rgba(57,255,20,0.2)' : '0 0 16px rgba(0,243,255,0.1)',
+                  transition: 'all 0.3s',
+                }}
+              >
+                NX
+              </div>
+              <div>
+                <p className="font-display font-black" style={{ fontSize: 13, color: '#f1f5f9', letterSpacing: '0.05em' }}>NEXUS</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span
+                    style={{ width: 5, height: 5, borderRadius: '50%', background: isStreaming ? '#39ff14' : '#00f3ff', display: 'block', boxShadow: `0 0 5px ${isStreaming ? '#39ff14' : '#00f3ff'}` }}
+                    className={isStreaming ? 'animate-pulse' : ''}
+                  />
+                  <span className="font-mono" style={{ fontSize: 8, color: isStreaming ? '#39ff14' : '#334155', letterSpacing: '0.1em' }}>
+                    {isStreaming ? 'COMPUTING…' : 'ONLINE'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* stats */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Model', val: 'LLaMA 3.3' },
+                { label: 'Tokens', val: `~${tokenCount}` },
+                { label: 'Messages', val: messages.length },
+                { label: 'Provider', val: 'Groq' },
+              ].map(({ label, val }) => (
+                <div
+                  key={label}
+                  className="flex flex-col rounded-xl px-3 py-2"
+                  style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  <span className="font-mono font-bold" style={{ fontSize: 11, color: '#475569' }}>{val}</span>
+                  <span className="font-mono uppercase tracking-widest" style={{ fontSize: 7, color: '#1e293b', marginTop: 2 }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* quick actions */}
+          <div
+            className="rounded-2xl p-4 flex flex-col gap-2"
+            style={{
+              background: 'rgba(5,9,18,0.85)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              backdropFilter: 'blur(16px)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={11} style={{ color: '#00f3ff' }} />
+              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#334155' }}>Quick Actions</span>
+            </div>
             {QUICK_PROMPTS.map((qp) => (
               <button
                 key={qp.label}
                 onClick={() => handleSend(qp.prompt)}
                 disabled={isStreaming}
-                className="w-full text-left px-3 py-2 bg-black/40 border border-gray-800 rounded text-xs font-mono text-gray-400 hover:text-cyber-neonCyan hover:border-cyber-neonCyan/50 hover:bg-cyber-neonCyan/5 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full text-left px-3 py-2.5 rounded-xl font-mono transition-all duration-200"
+                style={{
+                  fontSize: 10,
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.04)',
+                  color: '#334155',
+                  cursor: isStreaming ? 'not-allowed' : 'pointer',
+                  opacity: isStreaming ? 0.4 : 1,
+                }}
+                onMouseEnter={e => { if (!isStreaming) { e.currentTarget.style.borderColor = 'rgba(0,243,255,0.2)'; e.currentTarget.style.color = '#64748b'; } }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#334155'; }}
               >
                 {qp.label}
               </button>
             ))}
           </div>
-        </div>
 
-        <div className="flex-1">
-          <h3 className="font-display text-sm text-cyber-neonCyan border-b border-cyber-neonCyan/30 pb-2 mb-3 flex items-center gap-2">
-            <Paperclip className="w-4 h-4" /> KNOWLEDGE BASE
-          </h3>
-          <div className="space-y-2">
-            <DocItem name="ISO_27001_Compliance.pdf" size="2.4MB" />
-            <DocItem name="Incident_Response_Playbook.md" size="45KB" />
-            <DocItem name="Firewall_Ruleset_v3.json" size="12KB" />
-            <DocItem name="ZeroTrust_Architecture.docx" size="1.1MB" />
-          </div>
-          <button className="w-full neon-button text-xs py-2 mt-3">+ INGEST DOCUMENT</button>
-        </div>
-
-        <div className="p-3 bg-black/40 border border-cyber-neonCyan/20 rounded text-xs font-mono space-y-1">
-          <div className="text-cyber-neonGreen">▸ MODEL: llama-3.3-70b</div>
-          <div className="text-gray-500">▸ MESSAGES: {messages.length}</div>
-          <div className="text-gray-500">▸ TOKENS USED: ~{tokenCount}</div>
-          <div className="text-gray-500">▸ PROVIDER: Groq (free)</div>
-        </div>
-      </div>
-
-      {/* Main Chat */}
-      <div className="flex-1 glass-panel flex flex-col p-0 overflow-hidden border-t-4 border-t-cyber-neonCyan shadow-[0_0_30px_rgba(0,243,255,0.1)]">
-
-        {/* Header */}
-        <div className="bg-black/70 px-5 py-3 border-b border-cyber-neonCyan/20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isStreaming ? 'border-cyber-neonGreen bg-cyber-neonGreen/20 shadow-[0_0_15px_#39ff14]' : 'border-cyber-neonCyan bg-cyber-neonCyan/20 shadow-[0_0_10px_#00f3ff]'}`}>
-              <MessageSquare className={`w-5 h-5 ${isStreaming ? 'text-cyber-neonGreen animate-pulse' : 'text-cyber-neonCyan'}`} />
+          {/* knowledge base */}
+          <div
+            className="rounded-2xl p-4 flex flex-col gap-2 flex-1"
+            style={{
+              background: 'rgba(5,9,18,0.85)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              backdropFilter: 'blur(16px)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Paperclip size={11} style={{ color: '#00f3ff' }} />
+              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#334155' }}>Knowledge Base</span>
             </div>
-            <div>
-              <h2 className="font-display font-bold text-white tracking-widest text-base">NEXUS COPILOT</h2>
+            {[
+              { name: 'ISO_27001_Compliance.pdf', size: '2.4MB' },
+              { name: 'Incident_Response_Playbook.md', size: '45KB' },
+              { name: 'Firewall_Ruleset_v3.json', size: '12KB' },
+              { name: 'ZeroTrust_Architecture.docx', size: '1.1MB' },
+            ].map((d) => <DocItem key={d.name} {...d} />)}
+
+            <button
+              className="w-full py-2.5 rounded-xl font-mono font-bold uppercase tracking-widest mt-1 transition-all duration-200"
+              style={{
+                fontSize: 9,
+                background: 'rgba(0,243,255,0.05)',
+                border: '1px solid rgba(0,243,255,0.15)',
+                color: '#00f3ff',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,243,255,0.1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,243,255,0.05)'; }}
+            >
+              + Ingest Document
+            </button>
+          </div>
+        </motion.div>
+
+        {/* ── MAIN CHAT PANEL ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="flex-1 flex flex-col rounded-2xl overflow-hidden min-w-0"
+          style={{
+            background: 'rgba(5,9,18,0.88)',
+            border: '1px solid rgba(0,243,255,0.1)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 0 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+          }}
+        >
+          {/* ── TOP BAR ── */}
+          <div
+            className="flex items-center justify-between px-6 py-4 shrink-0"
+            style={{ borderBottom: '1px solid rgba(0,243,255,0.07)' }}
+          >
+            <div className="flex items-center gap-4">
+              {/* 3-dot chrome */}
+              <div className="flex gap-1.5">
+                {['#ff003c', '#f59e0b', '#39ff14'].map((c, i) => (
+                  <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: c, opacity: 0.65 }} />
+                ))}
+              </div>
+              <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.06)' }} />
               <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-cyber-neonGreen animate-pulse' : 'bg-cyber-neonGreen'}`} />
-                <p className="text-xs font-mono text-gray-400">
-                  {isStreaming ? 'COMPUTING RESPONSE...' : 'ONLINE — Groq / Llama 3.3 70B'}
-                </p>
+                <MessageSquare size={13} style={{ color: isStreaming ? '#39ff14' : '#00f3ff', transition: 'color 0.3s' }} />
+                <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 10, color: '#475569' }}>
+                  NEXUS Copilot
+                </span>
+                <div
+                  className="px-2 py-0.5 rounded font-mono font-bold"
+                  style={{
+                    fontSize: 8,
+                    background: isStreaming ? 'rgba(57,255,20,0.08)' : 'rgba(0,243,255,0.05)',
+                    border: `1px solid ${isStreaming ? 'rgba(57,255,20,0.2)' : 'rgba(0,243,255,0.12)'}`,
+                    color: isStreaming ? '#39ff14' : '#00f3ff',
+                    letterSpacing: '0.12em',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  {isStreaming ? '● LIVE' : '● READY'}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={handleExport} title="Export session" className="p-2 text-gray-500 hover:text-cyber-neonCyan transition-colors rounded">
-              <Download className="w-4 h-4" />
-            </button>
-            <button onClick={handleClear} title="Clear session" className="p-2 text-gray-500 hover:text-cyber-neonRed transition-colors rounded">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <AnimatePresence initial={false}>
-            {messages.map((msg, idx) => (
+            {/* action buttons */}
+            <div className="flex items-center gap-1">
+              {[
+                { icon: Download, fn: handleExport, tip: 'Export session' },
+                { icon: Trash2, fn: handleClear, tip: 'Clear session' },
+              ].map(({ icon: Icon, fn, tip }) => (
+                <button
+                  key={tip}
+                  onClick={fn}
+                  title={tip}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200"
+                  style={{ background: 'transparent', border: '1px solid transparent', color: '#334155' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#64748b'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.color = '#334155'; }}
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── MESSAGES ── */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4 custom-scrollbar">
+            <AnimatePresence initial={false}>
+              {messages.map((msg, idx) => (
+                <MessageBubble key={idx} msg={msg} isStreaming={false} streamText="" />
+              ))}
+            </AnimatePresence>
+
+            {/* streaming bubble */}
+            {isStreaming && streamingText && (
+              <MessageBubble
+                msg={{ role: 'assistant', content: '', timestamp: new Date() }}
+                isStreaming={true}
+                streamText={streamingText}
+              />
+            )}
+
+            {/* thinking dots */}
+            {isStreaming && !streamingText && (
               <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex gap-3"
               >
-                <div className={`max-w-[85%] flex flex-col gap-1 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  <div className={`p-4 rounded-xl font-mono text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-cyber-neonCyan/15 text-cyber-neonCyan border border-cyber-neonCyan/40 rounded-br-none'
-                      : msg.isError
-                        ? 'bg-cyber-neonRed/10 text-cyber-neonRed border border-cyber-neonRed/40 rounded-bl-none'
-                        : 'bg-black/50 text-gray-300 border border-white/10 rounded-bl-none'
-                  }`}>
-                    {msg.role === 'assistant' && !msg.isError && (
-                      <span className="text-cyber-neonCyan font-bold text-xs mb-2 block tracking-widest">{'[NEXUS] >'}</span>
-                    )}
-                    <div>{renderContent(msg.content)}</div>
-                  </div>
-                  <span className="text-[10px] font-mono text-gray-600 px-1">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </span>
+                <div
+                  className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black self-end mb-1"
+                  style={{ fontSize: 9, background: 'rgba(57,255,20,0.08)', border: '1px solid rgba(57,255,20,0.2)', color: '#39ff14' }}
+                >
+                  NX
+                </div>
+                <div
+                  className="px-4 py-3 rounded-2xl"
+                  style={{
+                    background: 'rgba(5,9,18,0.9)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: '18px 18px 18px 4px',
+                  }}
+                >
+                  <TypingDots />
                 </div>
               </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Streaming bubble */}
-          {isStreaming && streamingText && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
-              <div className="max-w-[85%] flex flex-col gap-1 items-start">
-                <div className="p-4 rounded-xl rounded-bl-none bg-black/50 text-gray-300 border border-white/10 font-mono text-sm leading-relaxed">
-                  <span className="text-cyber-neonCyan font-bold text-xs mb-2 block tracking-widest">{'[NEXUS] >'}</span>
-                  <div>{renderContent(streamingText)}</div>
-                  <span className="inline-block w-2 h-4 bg-cyber-neonCyan ml-1 animate-pulse align-middle" />
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Thinking dots */}
-          {isStreaming && !streamingText && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-              <div className="p-4 rounded-xl rounded-bl-none bg-black/50 border border-white/10 flex items-center gap-3">
-                <div className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="w-2 h-2 rounded-full bg-cyber-neonCyan"
-                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
-                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-mono text-gray-500">Querying threat matrix...</span>
-              </div>
-            </motion.div>
-          )}
-
-          <div ref={endOfMessagesRef} />
-        </div>
-
-        {/* Input */}
-        <div className="p-4 bg-black/60 border-t border-cyber-neonCyan/20">
-          {error && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-cyber-neonRed font-mono text-xs mb-2 flex items-center gap-2">
-              <span className="animate-pulse">⚠</span> {error}
-            </motion.p>
-          )}
-          <div className="flex items-center gap-3">
-            <span className="text-cyber-neonCyan font-bold font-mono text-lg leading-none">{'>'}</span>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="Query security parameters..."
-              disabled={isStreaming}
-              className="flex-1 bg-cyber-dark border border-gray-700 rounded-full py-3 px-5 text-white font-mono text-sm focus:outline-none focus:border-cyber-neonCyan focus:shadow-[0_0_15px_rgba(0,243,255,0.2)] transition-all disabled:opacity-50 placeholder:text-gray-600"
-            />
-            {isStreaming ? (
-              <button onClick={handleAbort} className="shrink-0 px-4 py-2 text-xs font-mono font-bold border border-cyber-neonRed text-cyber-neonRed hover:bg-cyber-neonRed hover:text-black rounded-full transition-all">
-                STOP
-              </button>
-            ) : (
-              <button onClick={() => handleSend()} disabled={!input.trim()} className="shrink-0 p-3 bg-cyber-neonCyan/20 border border-cyber-neonCyan/50 text-cyber-neonCyan hover:bg-cyber-neonCyan hover:text-black rounded-full transition-all disabled:opacity-30">
-                <Send className="w-4 h-4" />
-              </button>
             )}
+
+            <div ref={endOfMessagesRef} />
           </div>
-          <p className="text-[10px] font-mono text-gray-700 mt-2 text-center">
-            ENTER to send · STOP to abort stream · Session not stored
-          </p>
-        </div>
+
+          {/* ── INPUT BAR ── */}
+          <div
+            className="shrink-0 px-6 py-4"
+            style={{ borderTop: '1px solid rgba(0,243,255,0.07)' }}
+          >
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl font-mono"
+                style={{ background: 'rgba(255,0,60,0.06)', border: '1px solid rgba(255,0,60,0.15)', fontSize: 10, color: '#ff003c' }}
+              >
+                <span className="animate-pulse">⚠</span>
+                {error}
+              </motion.div>
+            )}
+
+            <div className="flex items-end gap-3">
+              {/* prompt indicator */}
+              <span className="font-mono font-bold shrink-0 mb-3" style={{ fontSize: 14, color: '#00f3ff', lineHeight: 1 }}>›</span>
+
+              {/* input */}
+              <div className="flex-1 relative">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Query security parameters… (Enter to send, Shift+Enter for newline)"
+                  disabled={isStreaming}
+                  rows={1}
+                  className="w-full resize-none font-mono outline-none custom-scrollbar"
+                  style={{
+                    background: 'rgba(0,0,0,0.35)',
+                    border: '1px solid rgba(0,243,255,0.1)',
+                    borderRadius: 14,
+                    padding: '10px 14px',
+                    color: '#94a3b8',
+                    fontSize: 11,
+                    lineHeight: 1.6,
+                    caretColor: '#00f3ff',
+                    overflow: 'hidden',
+                    transition: 'border-color 0.2s',
+                    minHeight: 42,
+                  }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(0,243,255,0.3)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(0,243,255,0.1)'}
+                />
+              </div>
+
+              {/* send / stop button */}
+              {isStreaming ? (
+                <button
+                  onClick={handleAbort}
+                  className="shrink-0 px-4 py-2.5 rounded-xl font-mono font-bold uppercase tracking-widest transition-all duration-200"
+                  style={{
+                    fontSize: 9,
+                    background: 'rgba(255,0,60,0.08)',
+                    border: '1px solid rgba(255,0,60,0.25)',
+                    color: '#ff003c',
+                    letterSpacing: '0.12em',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,0,60,0.15)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,0,60,0.08)'; }}
+                >
+                  STOP
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim()}
+                  className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200"
+                  style={{
+                    background: input.trim() ? 'rgba(0,243,255,0.1)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${input.trim() ? 'rgba(0,243,255,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                    color: input.trim() ? '#00f3ff' : '#1e293b',
+                    cursor: input.trim() ? 'pointer' : 'not-allowed',
+                    boxShadow: input.trim() ? '0 0 16px rgba(0,243,255,0.1)' : 'none',
+                  }}
+                  onMouseEnter={e => { if (input.trim()) e.currentTarget.style.background = 'rgba(0,243,255,0.18)'; }}
+                  onMouseLeave={e => { if (input.trim()) e.currentTarget.style.background = 'rgba(0,243,255,0.1)'; }}
+                >
+                  <Send size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* footer hint */}
+            <div className="flex items-center justify-between mt-3">
+              <p className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+                ENTER · send &nbsp;·&nbsp; SHIFT+ENTER · newline &nbsp;·&nbsp; Session not stored
+              </p>
+              <p className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+                ~{tokenCount} tokens used
+              </p>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    </motion.div>
+    </div>
   );
 };
-
-const DocItem = ({ name, size }) => (
-  <div className="p-2.5 bg-black/40 border border-gray-800 rounded flex justify-between items-center hover:border-cyber-neonCyan/50 transition-colors cursor-pointer group">
-    <div className="truncate pr-2 font-mono text-xs text-gray-400 group-hover:text-white">{name}</div>
-    <div className="text-[10px] text-cyber-neonCyan whitespace-nowrap">{size}</div>
-  </div>
-);
 
 export default SecurityChatbot;
