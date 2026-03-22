@@ -42,11 +42,11 @@ const renderContent = (content) => {
             className="flex items-center justify-between px-4 py-2"
             style={{ background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(0,243,255,0.1)' }}
           >
-            <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#00f3ff' }}>{lang}</span>
+            <span className="font-mono uppercase tracking-widest" style={{ fontSize: 11, color: '#00f3ff' }}>{lang}</span>
             <button
               onClick={() => navigator.clipboard.writeText(code)}
               className="font-mono transition-colors"
-              style={{ fontSize: 9, color: '#334155', letterSpacing: '0.1em' }}
+              style={{ fontSize: 12, color: '#64748b', letterSpacing: '0.1em' }}
               onMouseEnter={e => e.currentTarget.style.color = '#00f3ff'}
               onMouseLeave={e => e.currentTarget.style.color = '#334155'}
             >
@@ -57,7 +57,7 @@ const renderContent = (content) => {
             className="overflow-x-auto custom-scrollbar"
             style={{ background: 'rgba(0,0,0,0.4)', padding: '12px 16px', margin: 0 }}
           >
-            <code style={{ fontSize: 11, color: '#39ff14', fontFamily: 'monospace', lineHeight: 1.6 }}>{code}</code>
+            <code style={{ fontSize: 13, color: '#39ff14', fontFamily: 'monospace', lineHeight: 1.6 }}>{code}</code>
           </pre>
         </div>
       );
@@ -202,7 +202,7 @@ const MessageBubble = ({ msg, isStreaming, streamText }) => {
       <div
         className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black self-end mb-1"
         style={{
-          fontSize: 9,
+          fontSize: 11,
           background: isUser ? 'rgba(0,243,255,0.1)' : 'rgba(57,255,20,0.08)',
           border: `1px solid ${isUser ? 'rgba(0,243,255,0.25)' : 'rgba(57,255,20,0.2)'}`,
           color: isUser ? '#00f3ff' : '#39ff14',
@@ -216,7 +216,7 @@ const MessageBubble = ({ msg, isStreaming, streamText }) => {
       <div
         className="max-w-[80%] rounded-2xl px-4 py-3 font-mono text-sm leading-relaxed"
         style={{
-          fontSize: 12,
+          fontSize: 14,
           background: isUser
             ? 'rgba(0,243,255,0.07)'
             : msg.isError
@@ -231,15 +231,15 @@ const MessageBubble = ({ msg, isStreaming, streamText }) => {
         {!isUser && !msg.isError && (
           <div className="flex items-center gap-2 mb-2 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#39ff14', display: 'block', boxShadow: '0 0 5px #39ff14' }} />
-            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 8, color: '#39ff14' }}>NEXUS</span>
-            <span className="font-mono" style={{ fontSize: 8, color: '#1e293b', marginLeft: 'auto' }}>
+            <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 11, color: '#39ff14' }}>NEXUS</span>
+            <span className="font-mono" style={{ fontSize: 12, color: '#475569', marginLeft: 'auto' }}>
               {new Date(msg.timestamp).toLocaleTimeString()}
             </span>
           </div>
         )}
         {isUser && (
           <div className="flex justify-end mb-1.5">
-            <span className="font-mono" style={{ fontSize: 8, color: '#1e293b' }}>
+            <span className="font-mono" style={{ fontSize: 12, color: '#475569' }}>
               {new Date(msg.timestamp).toLocaleTimeString()}
             </span>
           </div>
@@ -264,12 +264,12 @@ const MessageBubble = ({ msg, isStreaming, streamText }) => {
 const DocItem = ({ name, size }) => (
   <div
     className="flex justify-between items-center px-3 py-2.5 rounded-xl font-mono cursor-pointer transition-all duration-200"
-    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)', fontSize: 10 }}
+    style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)', fontSize: 12 }}
     onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(0,243,255,0.2)'}
     onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'}
   >
     <span className="truncate pr-2" style={{ color: '#334155' }}>{name}</span>
-    <span style={{ color: '#00f3ff', fontSize: 9, flexShrink: 0 }}>{size}</span>
+    <span style={{ color: '#00f3ff', fontSize: 11, flexShrink: 0 }}>{size}</span>
   </div>
 );
 
@@ -438,7 +438,7 @@ const SecurityChatbot = () => {
                   background: isStreaming ? 'rgba(57,255,20,0.1)' : 'rgba(0,243,255,0.08)',
                   border: `1px solid ${isStreaming ? 'rgba(57,255,20,0.3)' : 'rgba(0,243,255,0.2)'}`,
                   color: isStreaming ? '#39ff14' : '#00f3ff',
-                  fontSize: 13,
+                  fontSize: 15,
                   boxShadow: isStreaming ? '0 0 16px rgba(57,255,20,0.2)' : '0 0 16px rgba(0,243,255,0.1)',
                   transition: 'all 0.3s',
                 }}
@@ -446,13 +446,13 @@ const SecurityChatbot = () => {
                 NX
               </div>
               <div>
-                <p className="font-display font-black" style={{ fontSize: 13, color: '#f1f5f9', letterSpacing: '0.05em' }}>NEXUS</p>
+                <p className="font-display font-black" style={{ fontSize: 15, color: '#f1f5f9', letterSpacing: '0.05em' }}>NEXUS</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
                     style={{ width: 5, height: 5, borderRadius: '50%', background: isStreaming ? '#39ff14' : '#00f3ff', display: 'block', boxShadow: `0 0 5px ${isStreaming ? '#39ff14' : '#00f3ff'}` }}
                     className={isStreaming ? 'animate-pulse' : ''}
                   />
-                  <span className="font-mono" style={{ fontSize: 8, color: isStreaming ? '#39ff14' : '#334155', letterSpacing: '0.1em' }}>
+                  <span className="font-mono" style={{ fontSize: 12, color: isStreaming ? '#39ff14' : '#64748b', letterSpacing: '0.1em' }}>
                     {isStreaming ? 'COMPUTING…' : 'ONLINE'}
                   </span>
                 </div>
@@ -472,8 +472,8 @@ const SecurityChatbot = () => {
                   className="flex flex-col rounded-xl px-3 py-2"
                   style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.04)' }}
                 >
-                  <span className="font-mono font-bold" style={{ fontSize: 11, color: '#475569' }}>{val}</span>
-                  <span className="font-mono uppercase tracking-widest" style={{ fontSize: 7, color: '#1e293b', marginTop: 2 }}>{label}</span>
+                  <span className="font-mono font-bold" style={{ fontSize: 13, color: '#475569' }}>{val}</span>
+                  <span className="font-mono uppercase tracking-widest" style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{label}</span>
                 </div>
               ))}
             </div>
@@ -490,7 +490,7 @@ const SecurityChatbot = () => {
           >
             <div className="flex items-center gap-2 mb-1">
               <Zap size={11} style={{ color: '#00f3ff' }} />
-              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#334155' }}>Quick Actions</span>
+              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 12, color: '#64748b' }}>Quick Actions</span>
             </div>
             {QUICK_PROMPTS.map((qp) => (
               <button
@@ -499,7 +499,7 @@ const SecurityChatbot = () => {
                 disabled={isStreaming}
                 className="w-full text-left px-3 py-2.5 rounded-xl font-mono transition-all duration-200"
                 style={{
-                  fontSize: 10,
+                  fontSize: 12,
                   background: 'rgba(0,0,0,0.3)',
                   border: '1px solid rgba(255,255,255,0.04)',
                   color: '#334155',
@@ -525,7 +525,7 @@ const SecurityChatbot = () => {
           >
             <div className="flex items-center gap-2 mb-1">
               <Paperclip size={11} style={{ color: '#00f3ff' }} />
-              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 9, color: '#334155' }}>Knowledge Base</span>
+              <span className="font-mono uppercase tracking-widest" style={{ fontSize: 12, color: '#64748b' }}>Knowledge Base</span>
             </div>
             {[
               { name: 'ISO_27001_Compliance.pdf', size: '2.4MB' },
@@ -537,7 +537,7 @@ const SecurityChatbot = () => {
             <button
               className="w-full py-2.5 rounded-xl font-mono font-bold uppercase tracking-widest mt-1 transition-all duration-200"
               style={{
-                fontSize: 9,
+                fontSize: 11,
                 background: 'rgba(0,243,255,0.05)',
                 border: '1px solid rgba(0,243,255,0.15)',
                 color: '#00f3ff',
@@ -578,13 +578,13 @@ const SecurityChatbot = () => {
               <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.06)' }} />
               <div className="flex items-center gap-2">
                 <MessageSquare size={13} style={{ color: isStreaming ? '#39ff14' : '#00f3ff', transition: 'color 0.3s' }} />
-                <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 10, color: '#475569' }}>
+                <span className="font-mono font-bold uppercase tracking-widest" style={{ fontSize: 12, color: '#475569' }}>
                   NEXUS Copilot
                 </span>
                 <div
                   className="px-2 py-0.5 rounded font-mono font-bold"
                   style={{
-                    fontSize: 8,
+                    fontSize: 11,
                     background: isStreaming ? 'rgba(57,255,20,0.08)' : 'rgba(0,243,255,0.05)',
                     border: `1px solid ${isStreaming ? 'rgba(57,255,20,0.2)' : 'rgba(0,243,255,0.12)'}`,
                     color: isStreaming ? '#39ff14' : '#00f3ff',
@@ -644,7 +644,7 @@ const SecurityChatbot = () => {
               >
                 <div
                   className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-mono font-black self-end mb-1"
-                  style={{ fontSize: 9, background: 'rgba(57,255,20,0.08)', border: '1px solid rgba(57,255,20,0.2)', color: '#39ff14' }}
+                  style={{ fontSize: 11, background: 'rgba(57,255,20,0.08)', border: '1px solid rgba(57,255,20,0.2)', color: '#39ff14' }}
                 >
                   NX
                 </div>
@@ -674,7 +674,7 @@ const SecurityChatbot = () => {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl font-mono"
-                style={{ background: 'rgba(255,0,60,0.06)', border: '1px solid rgba(255,0,60,0.15)', fontSize: 10, color: '#ff003c' }}
+                style={{ background: 'rgba(255,0,60,0.06)', border: '1px solid rgba(255,0,60,0.15)', fontSize: 12, color: '#ff003c' }}
               >
                 <span className="animate-pulse">⚠</span>
                 {error}
@@ -683,7 +683,7 @@ const SecurityChatbot = () => {
 
             <div className="flex items-end gap-3">
               {/* prompt indicator */}
-              <span className="font-mono font-bold shrink-0 mb-3" style={{ fontSize: 14, color: '#00f3ff', lineHeight: 1 }}>›</span>
+              <span className="font-mono font-bold shrink-0 mb-3" style={{ fontSize: 16, color: '#00f3ff', lineHeight: 1 }}>›</span>
 
               {/* input */}
               <div className="flex-1 relative">
@@ -702,7 +702,7 @@ const SecurityChatbot = () => {
                     borderRadius: 14,
                     padding: '10px 14px',
                     color: '#94a3b8',
-                    fontSize: 11,
+                    fontSize: 13,
                     lineHeight: 1.6,
                     caretColor: '#00f3ff',
                     overflow: 'hidden',
@@ -720,7 +720,7 @@ const SecurityChatbot = () => {
                   onClick={handleAbort}
                   className="shrink-0 px-4 py-2.5 rounded-xl font-mono font-bold uppercase tracking-widest transition-all duration-200"
                   style={{
-                    fontSize: 9,
+                    fontSize: 11,
                     background: 'rgba(255,0,60,0.08)',
                     border: '1px solid rgba(255,0,60,0.25)',
                     color: '#ff003c',
@@ -753,10 +753,10 @@ const SecurityChatbot = () => {
 
             {/* footer hint */}
             <div className="flex items-center justify-between mt-3">
-              <p className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+              <p className="font-mono" style={{ fontSize: 12, color: '#475569', letterSpacing: '0.1em' }}>
                 ENTER · send &nbsp;·&nbsp; SHIFT+ENTER · newline &nbsp;·&nbsp; Session not stored
               </p>
-              <p className="font-mono" style={{ fontSize: 8, color: '#1e293b', letterSpacing: '0.1em' }}>
+              <p className="font-mono" style={{ fontSize: 12, color: '#475569', letterSpacing: '0.1em' }}>
                 ~{tokenCount} tokens used
               </p>
             </div>
