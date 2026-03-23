@@ -402,7 +402,9 @@ const SecurityChatbot = () => {
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden" style={{ background: '#03060f', height: '100%' }}>
+   <div className="relative w-full overflow-hidden" style={{ background: '#03060f', height: '100%' }}>
+
+
       <ChatBackground />
 
       {/* vignette */}
@@ -411,7 +413,8 @@ const SecurityChatbot = () => {
         style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)' }}
       />
 
-      <div className="relative z-10 h-full flex gap-5 p-6">
+      <div className="relative z-10 h-full flex gap-5 p-4">
+
 
         {/* ── SIDEBAR ── */}
         <motion.div
