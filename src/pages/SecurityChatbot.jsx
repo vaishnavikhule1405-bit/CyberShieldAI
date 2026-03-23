@@ -413,16 +413,14 @@ const SecurityChatbot = () => {
         style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%)' }}
       />
 
-      <div className="relative z-10 h-full flex gap-5 p-4">
-
+      <div className="relative z-10 flex gap-5 p-4" style={{ height: '100%', minHeight: 0 }}>
 
         {/* ── SIDEBAR ── */}
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="hidden md:flex flex-col gap-4 w-64 shrink-0"
-        >
+          className="hidden md:flex flex-col gap-4 w-64 shrink-0 overflow-y-auto"        >
           {/* NEXUS identity card */}
           <div
             className="rounded-2xl p-4"
