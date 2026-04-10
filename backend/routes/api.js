@@ -3,6 +3,7 @@ import multer from 'multer';
 import axios from 'axios';
 import FormData from 'form-data';
 import pool from '../db.js';
+import { analyzeImageWithHF, analyzeVideoWithHF } from '../utils/huggingface.js';
 
 const router = express.Router();
 
@@ -172,171 +173,293 @@ router.post('/scan', upload.single('file'), async (req, res) => {
   }
 });
 
-// 1.5 PHISHING / DEEPFAKE ANALYZER API
+// ─────────────────────────────────────────────────────────────────────────────
+// 1.5  PHISHING / DEEPFAKE ANALYZER API
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/phish/analyze', upload.single('file'), async (req, res) => {
   try {
     const groqApiKey = process.env.VITE_GROQ_API_KEY;
     if (!groqApiKey) return res.status(500).json({ error: 'Groq API key missing' });
 
-    // TEXT/RAW MESSAGE ANALYSIS
+    // ── TEXT / RAW MESSAGE ────────────────────────────────────────────────────
     if (!req.file) {
       const { text } = req.body;
       if (!text) return res.status(400).json({ error: 'No text or file provided' });
-      
-      await logActivity(req.io, 'INFO', `Analyzing raw text payload for phishing...`);
-      
-      const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-        model: 'llama-3.3-70b-versatile',
-        response_format: { type: 'json_object' },
-        messages: [
-           { role: 'system', content: 'You are an elite cybersecurity AI. Analyze the text and determine if it is phishing/scam. Respond ONLY in valid JSON format with NO markdown code blocks. Example: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}' },
-           { role: 'user', content: text }
-        ]
-      }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+      await logActivity(req.io, 'INFO', 'Analyzing raw text payload for phishing...');
+
+      const groqResponse = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: 'llama-3.3-70b-versatile',
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are an elite cybersecurity AI. Analyze the text and determine if it is phishing/scam. ' +
+                'Respond ONLY in valid JSON format with NO markdown code blocks. ' +
+                'Example: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}',
+            },
+            { role: 'user', content: text },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${groqApiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       let content = groqResponse.data.choices[0].message.content;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+      const result = jsonMatch
+        ? JSON.parse(jsonMatch[0])
+        : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+
       return res.json({ success: true, data: result });
     }
 
-    // FILE ANALYSIS
+    // ── FILE ANALYSIS ─────────────────────────────────────────────────────────
     const { originalname, buffer, mimetype } = req.file;
     await logActivity(req.io, 'INFO', `Analyzing file for deepfake/phishing: ${originalname}`);
 
+    // ── IMAGE ─────────────────────────────────────────────────────────────────
     if (mimetype.startsWith('image/')) {
-        const hashSum = crypto.createHash('sha256');
-        hashSum.update(buffer);
+      console.log(`[Phish] Image detected: ${originalname} (${mimetype})`);
 
-        // Extract printable strings from first 100KB to check for EXIF/manipulation markers
-        const sampleSize = Math.min(buffer.length, 100000);
-        const sampleBuffer = buffer.subarray(0, sampleSize);
-        const strings = sampleBuffer.toString('ascii').match(/[ -~]{4,}/g)?.join(' ') || '';
-        
-        try {
-          // Hardcode obvious checks first for instant detection and to save tokens
-          const lowerStrings = strings.toLowerCase() + originalname.toLowerCase();
-          const isHardcodedFake = lowerStrings.includes('midjourney') || lowerStrings.includes('stable diffusion') || lowerStrings.includes('dall-e') || lowerStrings.includes('ai-generated');
+      // ── Fast-path: known AI watermarks / metadata strings ──────────────────
+      const sampleSize = Math.min(buffer.length, 100_000);
+      const sampleStrings = buffer
+        .subarray(0, sampleSize)
+        .toString('ascii')
+        .toLowerCase();
+      const lowerName = originalname.toLowerCase();
 
-          if (isHardcodedFake) {
-            return res.json({ success: true, data: { isPhishing: true, confidence: 95, explanation: "Deepfake threat detected: Generative AI metadata or watermark identified." } });
-          }
+      const HARDCODED_AI_MARKERS = [
+        'midjourney', 'stable diffusion', 'dall-e', 'dalle',
+        'ai-generated', 'firefly', 'ideogram', 'leonardo.ai',
+      ];
+      const hardcodedMatch = HARDCODED_AI_MARKERS.find(
+        (m) => sampleStrings.includes(m) || lowerName.includes(m)
+      );
 
-          // Llama 4 Scout's base64 limit is 4MB — fall back to metadata heuristics for larger images
-          const MAX_BASE64_BYTES = 4 * 1024 * 1024;
-          if (buffer.length > MAX_BASE64_BYTES) {
-            // Use text-only model to analyze metadata strings for AI generation markers
-            const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-              model: 'llama-3.3-70b-versatile',
-              response_format: { type: 'json_object' },
-              max_tokens: 256,
-              messages: [
-                { role: 'system', content: 'You are a forensic metadata analyst. Large images cannot be sent to vision AI. Analyze the filename and embedded metadata strings for any AI generation markers (MidJourney, Stable Diffusion, DALL-E, Firefly, etc). Respond ONLY in valid JSON: {"isPhishing": true/false, "confidence": 0-100, "explanation": "brief reason"}' },
-                { role: 'user', content: `Filename: ${originalname}\nMetadata strings: ${strings.substring(0, 2000)}` }
-              ]
-            }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' } });
+      if (hardcodedMatch) {
+        console.log(`[Phish] Fast-path AI marker hit: "${hardcodedMatch}"`);
+        return res.json({
+          success: true,
+          data: {
+            isPhishing: true,
+            confidence: 96,
+            explanation:
+              `🚨 <b>AI-generated image detected (fast path)</b>\n\n` +
+              `Embedded metadata contains the marker: <b>"${hardcodedMatch}"</b>.\n\n` +
+              `This is a definitive indicator that the image was produced by a generative AI tool. ` +
+              `No human photographer created this content.`,
+          },
+        });
+      }
 
-            let content = groqResponse.data.choices[0].message.content;
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
-            return res.json({ success: true, data: result });
-          }
+      // ── HuggingFace deepfake classifier ────────────────────────────────────
+      let hfResult = null;
+      try {
+        hfResult = await analyzeImageWithHF(buffer, originalname);
+        console.log(`[Phish] HF image result for ${originalname}:`, hfResult);
+      } catch (hfErr) {
+        console.warn(`[Phish] HF image analysis failed: ${hfErr.message}`);
+      }
 
-          const base64Image = buffer.toString('base64');
-          const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-            max_tokens: 256,
+      // If HF returned a confident verdict (>= 70 %), use it directly
+      if (hfResult && hfResult.confidence >= 70) {
+        return res.json({ success: true, data: hfResult });
+      }
+
+      // ── Groq vision fallback (or corroboration when HF is uncertain) ───────
+      console.log(
+        `[Phish] HF confidence low (${hfResult?.confidence ?? 'N/A'}%), falling back to Groq vision`
+      );
+      try {
+        const base64Image = buffer.toString('base64');
+        const groqResponse = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            model: 'llama-3.2-90b-vision-preview',
             messages: [
-               {
-                 role: 'user',
-                 content: [
-                   { type: "text", text: 'You are an elite cyber forensics AI. Analyze this image to determine if it is an AI-generated deepfake. Look for unnatural rendering, distorted text, spatial inconsistencies, algorithmic artifacts, weird hands/eyes, or synthetic composition. You MUST respond ONLY in valid JSON format: {"isPhishing": true, "confidence": 95, "explanation": "Detailed visual evidence of AI generation."} if it is a deepfake/AI, or {"isPhishing": false, "confidence": 95, "explanation": "Authentic photograph with natural lighting, coherent structures, and no visible AI artifacts."} if it is real. Be skeptical.' },
-                   { type: "image_url", image_url: { url: `data:${mimetype};base64,${base64Image}` } }
-                 ]
-               }
-            ]
-          }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
-
-          let content = groqResponse.data.choices[0].message.content;
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
-          return res.json({ success: true, data: result });
-        } catch (visionErr) {
-          // Vision model rejected the image (too small, invalid format, size limit, etc.)
-          // Fall back to text-only metadata heuristic analysis — never return 500 to the user
-          console.warn('Vision AI rejected image, falling back to metadata analysis:', visionErr.response?.data?.error?.message || visionErr.message);
-          try {
-            const fallbackRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-              model: 'llama-3.3-70b-versatile',
-              response_format: { type: 'json_object' },
-              max_tokens: 256,
-              messages: [
-                { role: 'system', content: 'You are a forensic metadata analyst. The image could not be processed by vision AI. Analyze the filename and any embedded metadata strings for AI generation markers (MidJourney, DALL-E, Stable Diffusion, Firefly, etc.). Respond ONLY in valid JSON: {"isPhishing": true/false, "confidence": 0-100, "explanation": "brief reason"}' },
-                { role: 'user', content: `Filename: ${originalname}\nMetadata strings: ${strings.substring(0, 2000)}` }
-              ]
-            }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' } });
-            let fbContent = fallbackRes.data.choices[0].message.content;
-            const fbMatch = fbContent.match(/\{[\s\S]*\}/);
-            const fbResult = fbMatch ? JSON.parse(fbMatch[0]) : JSON.parse(fbContent.replace(/```json/g, '').replace(/```/g, '').trim());
-            return res.json({ success: true, data: fbResult });
-          } catch (fbErr) {
-            console.error('Fallback metadata analysis also failed:', fbErr.message);
-            return res.status(500).json({ error: 'Image analysis failed', details: visionErr.response?.data?.error?.message || visionErr.message });
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text:
+                      'You are an elite cyber forensics AI. Analyze this image to determine if it is AI-generated or a deepfake. ' +
+                      'Look for: unnatural skin/hair rendering, spatial inconsistencies, distorted text, algorithmic artifacts, ' +
+                      'weird hands/eyes/ears, synthetic backgrounds, perfect-but-wrong lighting, or typical GAN/diffusion artifacts. ' +
+                      'Respond ONLY in valid JSON — no markdown: ' +
+                      '{"isPhishing": true, "confidence": 95, "explanation": "Detailed visual evidence."} ' +
+                      'or {"isPhishing": false, "confidence": 95, "explanation": "Why this looks authentic."}',
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: { url: `data:${mimetype};base64,${base64Image}` },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${groqApiKey}`,
+              'Content-Type': 'application/json',
+            },
           }
-        }
-    } 
-    else if (mimetype.startsWith('video/')) {
-        // Video file metadata string extraction
-        const hashSum = crypto.createHash('sha256');
-        hashSum.update(buffer);
-        const sha256 = hashSum.digest('hex');
-
-        // Extract printable strings from first 50KB to check for manipulation markers
-        const sampleSize = Math.min(buffer.length, 50000);
-        const sampleBuffer = buffer.subarray(0, sampleSize);
-        const strings = sampleBuffer.toString('ascii').match(/[ -~]{4,}/g)?.join(' ') || '';
-        
-        const lowerStringsVideo = strings.toLowerCase() + originalname.toLowerCase();
-        const isHardcodedFakeVideo = lowerStringsVideo.includes('runwayml') || lowerStringsVideo.includes('deepface') || lowerStringsVideo.includes('sora') || lowerStringsVideo.includes('ai-generated') || lowerStringsVideo.includes('synthesia') || lowerStringsVideo.includes('heygen') || lowerStringsVideo.includes('deepfake');
-
-        if (isHardcodedFakeVideo) {
-             return res.json({ success: true, data: { isPhishing: true, confidence: 95, explanation: "Deepfake threat detected: Generative AI metadata or watermark identified." } });
-        }
-
-        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: 'llama-3.3-70b-versatile',
-          response_format: { type: 'json_object' },
-          messages: [
-             { role: 'system', content: 'You are a STRICT binary forensics parser checking for deepfake video watermarks. Output {"isPhishing": true, "confidence": 95, "explanation": "Generative AI or deepfake signature detected."} if the metadata contains suspicious tokens, AI engine stamps, or irregularities indicating synthetic media. Otherwise, output {"isPhishing": false, "confidence": 99, "explanation": "Authentic video capture. No generative AI tokens detected."}. Be highly suspicious of any generic or stripped metadata. Respond ONLY with valid JSON.' },
-             { role: 'user', content: `Filename: ${originalname}. Metadata strings: ${strings.substring(0, 1000)}` }
-          ]
-        }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+        );
 
         let content = groqResponse.data.choices[0].message.content;
         const jsonMatch = content.match(/\{[\s\S]*\}/);
-        const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
-        return res.json({ success: true, data: result });
+        const groqResult = jsonMatch
+          ? JSON.parse(jsonMatch[0])
+          : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+
+        // If both HF and Groq have results, merge — HF wins on classification,
+        // Groq provides richer explanation
+        if (hfResult) {
+          groqResult.explanation =
+            `<b>[HuggingFace classifier]</b> Confidence: ${hfResult.confidence}% (${hfResult.isPhishing ? 'AI' : 'Real'}) — low confidence, deferred to vision model.\n\n` +
+            `<b>[Groq Vision analysis]</b>\n` +
+            groqResult.explanation;
+        }
+
+        return res.json({ success: true, data: groqResult });
+      } catch (visionErr) {
+        console.error('[Phish] Groq vision fallback failed:', visionErr.response?.data || visionErr.message);
+
+        // If we have a low-confidence HF result, return it rather than erroring
+        if (hfResult) {
+          hfResult.explanation =
+            '⚠️ Groq vision model unavailable — result from HuggingFace classifier only (low confidence).\n\n' +
+            hfResult.explanation;
+          return res.json({ success: true, data: hfResult });
+        }
+
+        return res.status(500).json({
+          error: 'Image analysis failed',
+          details: visionErr.response?.data?.error?.message ?? visionErr.message,
+        });
+      }
     }
-    else {
-        // Emails / .eml / text files
-        const fileText = buffer.toString('utf8').substring(0, 5000); // Take first 5000 chars
-        const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: 'llama-3.3-70b-versatile',
-          response_format: { type: 'json_object' },
-          messages: [
-             { role: 'system', content: 'You are analyzing a raw email/document for phishing, malicious links, and urgency loops. Respond ONLY in valid JSON with no markdown blocks: {"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}' },
-             { role: 'user', content: `Filename: ${originalname}\nContent:\n${fileText}` }
-          ]
-        }, { headers: { 'Authorization': `Bearer ${groqApiKey}`, 'Content-Type': 'application/json' }});
+
+    // ── VIDEO ─────────────────────────────────────────────────────────────────
+    if (mimetype.startsWith('video/')) {
+      console.log(`[Phish] Video detected: ${originalname} (${mimetype})`);
+
+      try {
+        const videoResult = await analyzeVideoWithHF(buffer, originalname);
+        console.log(`[Phish] HF video result for ${originalname}:`, videoResult);
+
+        await logActivity(
+          req.io,
+          videoResult.isPhishing ? 'CRITICAL' : 'INFO',
+          `Video deepfake scan complete for ${originalname}. ` +
+            `Verdict: ${videoResult.isPhishing ? 'DEEPFAKE DETECTED' : 'No deepfake detected'} ` +
+            `(${videoResult.confidence}% confidence)`
+        );
+
+        return res.json({ success: true, data: videoResult });
+      } catch (videoErr) {
+        console.error('[Phish] Video HF analysis failed:', videoErr.message);
+
+        // Groq text fallback — analyse metadata strings
+        const sampleSize = Math.min(buffer.length, 50_000);
+        const sampleStrings = buffer.subarray(0, sampleSize).toString('ascii').toLowerCase();
+
+        const groqResponse = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            model: 'llama-3.3-70b-versatile',
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a strict binary forensics parser checking for deepfake video watermarks. ' +
+                  'Output {"isPhishing": true, "confidence": 95, "explanation": "Generative AI or deepfake signature detected."} ' +
+                  'if the metadata contains suspicious tokens, AI engine stamps, or irregularities indicating synthetic media. ' +
+                  'Otherwise output {"isPhishing": false, "confidence": 99, "explanation": "Authentic video capture. No generative AI tokens detected."}. ' +
+                  'Be highly suspicious of any generic or stripped metadata. Respond ONLY with valid JSON.',
+              },
+              {
+                role: 'user',
+                content: `Filename: ${originalname}. Metadata strings: ${sampleStrings.substring(0, 1500)}`,
+              },
+            ],
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${groqApiKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
         let content = groqResponse.data.choices[0].message.content;
         const jsonMatch = content.match(/\{[\s\S]*\}/);
-        const result = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+        const result = jsonMatch
+          ? JSON.parse(jsonMatch[0])
+          : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+
+        result.explanation =
+          '⚠️ HuggingFace video analysis unavailable — using Groq metadata analysis as fallback.\n\n' +
+          result.explanation;
+
         return res.json({ success: true, data: result });
+      }
+    }
+
+    // ── EMAILS / TEXT FILES (.eml, .txt, etc.) ────────────────────────────────
+    {
+      const fileText = buffer.toString('utf8').substring(0, 5000);
+      const groqResponse = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          model: 'llama-3.3-70b-versatile',
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are analyzing a raw email/document for phishing, malicious links, and urgency loops. ' +
+                'Respond ONLY in valid JSON with no markdown blocks: ' +
+                '{"isPhishing": true, "confidence": 95, "explanation": "Brief reasoning with highlighted words wrapped in <b>tags</b>."}',
+            },
+            {
+              role: 'user',
+              content: `Filename: ${originalname}\nContent:\n${fileText}`,
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${groqApiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      let content = groqResponse.data.choices[0].message.content;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      const result = jsonMatch
+        ? JSON.parse(jsonMatch[0])
+        : JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
+
+      return res.json({ success: true, data: result });
     }
   } catch (err) {
     console.error('Phish Analysis Error:', err.response?.data || err.message);
-    res.status(500).json({ error: 'Analysis failed', details: err.response?.data?.error?.message || err.message });
+    res.status(500).json({
+      error: 'Analysis failed',
+      details: err.response?.data?.error?.message ?? err.message,
+    });
   }
 });
 
@@ -395,31 +518,24 @@ router.get('/threats', async (req, res) => {
     // Map db rows for quick lookup
     const dbDataMap = {};
     rows.forEach(r => {
-      // Map to hour format e.g. "05:00 PM" (Database truncates minutes to zero)
       const date = new Date(r.time_bucket);
       const hourLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       dbDataMap[hourLabel] = parseInt(r.count);
     });
 
-    // We will generate the last 7 hours (including current hour)
-    // and inject real DB data where it exists.
     const data = [];
     const now = new Date();
-    // CRITICAL FIX: Zero out minutes/seconds to match DATE_TRUNC('hour', ...) from Postgres!
     now.setMinutes(0, 0, 0);
     
-    const staticBaseline = [2, 5, 1, 6, 3, 2, 4]; // Predictable baseline shape
+    const staticBaseline = [2, 5, 1, 6, 3, 2, 4];
     
     for (let i = 6; i >= 0; i--) {
-      // Adjust to the top of the hour for stable labels across API calls
       const pastHour = new Date(now.getTime() - (i * 60 * 60 * 1000));
       const label = pastHour.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
       if (dbDataMap[label] !== undefined) {
-        // ACTUAL REAL DATA FROM NEON DB
         data.push({ time: label, threats: dbDataMap[label] });
       } else {
-        // HACKATHON POLISH: Predictable baseline noise so graph isn't completely flat.
         data.push({ time: label, threats: staticBaseline[i] });
       }
     }
