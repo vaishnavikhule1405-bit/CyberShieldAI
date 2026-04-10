@@ -4,8 +4,9 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
-import cveRoutes from './routes/cve.js'
+import cveRoutes from './routes/cve.js';
 import policyRoutes from './routes/policy.js';
+import { startEmailAgent } from './services/aiEmailAgent.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,7 +14,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') }); // Load root
+dotenv.config({ path: path.join(__dirname, '.env') }); // Load backend local
 
 const app = express();
 const httpServer = createServer(app);
@@ -52,4 +54,7 @@ const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, () => {
   console.log(`[+] Server running on port ${PORT}`);
+  
+  // Start the background AI Email Security Agent
+  startEmailAgent();
 });

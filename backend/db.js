@@ -26,6 +26,15 @@ const initDB = async () => {
         text TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id SERIAL PRIMARY KEY,
+        sender VARCHAR(255) NOT NULL,
+        subject TEXT NOT NULL,
+        classification VARCHAR(50) NOT NULL,
+        confidence TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('Database tables initialized');
   } catch (err) {
