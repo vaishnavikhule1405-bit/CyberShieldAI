@@ -102,6 +102,10 @@ const SidebarBackground = () => {
 ───────────────────────────────────────── */
 const menuItems = [
   { name: 'Dashboard', path: '/dashboard', icon: Activity, accent: '#00f3ff', rgb: '0,243,255' },
+
+  // 🛡️ NEW SPAM SHIELD (INSERTED HERE)
+  { name: 'Spam Shield', path: '/spam-shield', icon: Shield, accent: '#22c55e', rgb: '34,197,94' },
+
   { name: 'Malware Detector', path: '/malware', icon: Bug, accent: '#ff003c', rgb: '255,0,60' },
   { name: 'Phishing Filter', path: '/phishing', icon: Mail, accent: '#a855f7', rgb: '168,85,247' },
   { name: 'Vulnerabilities', path: '/vulnerabilities', icon: AlertTriangle, accent: '#f97316', rgb: '249,115,22' },

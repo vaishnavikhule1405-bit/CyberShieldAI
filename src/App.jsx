@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -14,20 +15,28 @@ import HoneypotLogs from './pages/HoneypotLogs';
 import PolicyChatbot from './pages/PolicyChatbot';
 import ProfilePage from './pages/ProfilePage';
 
+// 🔥 NEW IMPORT
+import SpamShield from './pages/SpamShield';
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+
+          {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
-          <Route element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+          {/* Protected Routes with Layout */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/malware" element={<MalwareDetector />} />
             <Route path="/phishing" element={<PhishingDetector />} />
@@ -36,9 +45,14 @@ function App() {
             <Route path="/honeypot" element={<HoneypotLogs />} />
             <Route path="/policy" element={<PolicyChatbot />} />
             <Route path="/profile" element={<ProfilePage />} />
+
+            {/* 🛡️ Spam Shield Route */}
+            <Route path="/spam-shield" element={<SpamShield />} />
           </Route>
 
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
       </Router>
     </AuthProvider>

@@ -7,6 +7,9 @@ import { io } from 'socket.io-client';
 
 const BACKEND_URL = 'http://127.0.0.1:5000';
 
+// Initialize socket globally so it doesn't disconnect on unmount
+const socket = io(BACKEND_URL);
+
 const getRelativeTime = (dateString) => {
   const date = new Date(dateString + (dateString.includes('Z') ? '' : 'Z'));
   const now = new Date();
@@ -381,7 +384,6 @@ const Dashboard = () => {
     const interval = setInterval(fetchData, 10000);
     const timeInterval = setInterval(() => setCurrentTime(Date.now()), 1000);
 
-    const socket = io(BACKEND_URL);
     socket.on('new_activity', (newActivity) => {
       setActivityFeed(prev => [newActivity, ...prev].slice(0, 15));
     });
@@ -389,7 +391,7 @@ const Dashboard = () => {
     return () => {
       clearInterval(interval);
       clearInterval(timeInterval);
-      socket.disconnect();
+      socket.off('new_activity');
     };
   }, []);
 
