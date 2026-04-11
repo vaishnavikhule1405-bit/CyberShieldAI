@@ -47,20 +47,31 @@ export async function startEmailAgent() {
           const sender = parsed.from?.text || 'Unknown Sender';
           const body = parsed.text || parsed.textAsHtml || '';
 
-          const prompt = `Analyze the following email content and determine if it is spam or phishing. Consider factors like suspicious links, urgent language, unknown sender, and misleading content. Respond only with 'Spam' or 'Safe'.
-
-Subject: ${subject}
-Sender: ${sender}
-Body: ${body.substring(0, 1500)}`;
-
           const completion = await openai.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.1,
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an email content classifier. Your job is to detect spam and phishing emails. ' +
+                  'IMPORTANT: Judge based on the MESSAGE CONTENT ONLY — subject line and body. ' +
+                  'Do NOT use the sender address to decide. A spam message is spam regardless of who sent it, ' +
+                  'even if it came from a teammate, colleague, or known contact. ' +
+                  'Look for: urgent/threatening language, requests for money or credentials, suspicious links, ' +
+                  'lottery/prize scams, impersonation, misleading claims, unsolicited offers. ' +
+                  'Respond with ONLY one word: "Spam" or "Safe". No explanation.',
+              },
+              {
+                role: 'user',
+                content: `Subject: ${subject}\n\nBody:\n${body.substring(0, 2000)}`,
+              },
+            ],
+            temperature: 0,  // deterministic — same content must always give same result
           });
 
-          const classification = completion.choices[0].message.content.trim();
-          console.log(`Email from ${sender} classified as: ${classification}`);
+          const raw = completion.choices[0].message.content.trim();
+          const classification = raw.toLowerCase().includes('spam') ? 'Spam' : 'Safe';
+          console.log(`Email from ${sender} | Subject: "${subject}" → ${classification}`);
 
           await pool.query(
             `INSERT INTO email_logs (sender, subject, classification, confidence) VALUES ($1, $2, $3, $4)`,
@@ -89,13 +100,52 @@ Body: ${body.substring(0, 1500)}`;
     try {
       await client.connect();
       console.log('[+] AI Email Agent connected to IMAP server.');
-      
+
+      // Guard to prevent both 'error' and 'close' from scheduling two reconnects
+      let reconnecting = false;
+      let pollInterval;
+
+      const scheduleReconnect = (reason) => {
+        if (reconnecting) return;
+        reconnecting = true;
+        clearInterval(pollInterval);
+        console.warn(`[!] AI Email Agent reconnecting in 30s (reason: ${reason})`);
+        setTimeout(startAgent, 30_000);
+      };
+
+      // ── Handle socket-level errors (ETIMEOUT, ECONNRESET, etc.) ──────────────────
+      client.on('error', (err) => {
+        console.error('[!] AI Email Agent IMAP error:', err.code ?? err.message);
+        scheduleReconnect(err.code ?? err.message);
+      });
+
+      client.on('close', () => {
+        scheduleReconnect('connection closed');
+      });
+
       await checkMails();
-      setInterval(checkMails, 60 * 1000); // 1 minute
-      
+      pollInterval = setInterval(checkMails, 60 * 1000); // 1 minute
+
     } catch (err) {
-      console.error('[!] AI Email Agent failed to connect:', err.response || err);
-      setTimeout(startAgent, 30000);
+      const errMsg = err.response ?? err.message ?? String(err);
+      const isAuthError = typeof errMsg === 'string' && errMsg.includes('Invalid credentials');
+
+      if (isAuthError) {
+        console.error(
+          '[!] AI Email Agent: Gmail authentication FAILED.\n' +
+          '    The App Password in .env is invalid or has been revoked.\n' +
+          '    Steps to fix:\n' +
+          '      1. Go to https://myaccount.google.com/apppasswords\n' +
+          '      2. Delete the old password and create a new one\n' +
+          '      3. Update GMAIL_APP_PASSWORD in backend/.env\n' +
+          '    Email agent will NOT retry until the server restarts.'
+        );
+        // Do NOT retry — wrong credentials will never suddenly become right
+        return;
+      }
+
+      console.error('[!] AI Email Agent failed to connect:', errMsg);
+      setTimeout(startAgent, 30_000);
     }
   };
 

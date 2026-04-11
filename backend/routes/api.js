@@ -3,12 +3,12 @@ import multer from 'multer';
 import axios from 'axios';
 import FormData from 'form-data';
 import pool from '../db.js';
-import { analyzeImageWithHF, analyzeVideoWithHF } from '../utils/huggingface.js';
+import { analyzeImageWithGemini, analyzeVideoWithGemini } from '../utils/gemini.js';
 
 const router = express.Router();
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({ storage, limits: { fileSize: 200 * 1024 * 1024 } }); // 200 MB max
 
 const logActivity = async (io, type, text) => {
   try {
@@ -212,30 +212,25 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
         return res.json({ success: true, data: result });
       }
 
-      // Try HuggingFace classifier
-      let hfResult = null;
-      const hfAvailable = !!process.env.HF_API_KEY;
-
-      if (hfAvailable) {
+      // ── Primary: Gemini Vision ──────────────────────────────────────────────
+      const geminiAvailable = !!process.env.GEMINI_API_KEY;
+      if (geminiAvailable) {
         try {
-          hfResult = await analyzeImageWithHF(buffer, originalname);
-          console.log(`[Phish] HF result: isAI=${hfResult.isPhishing}, conf=${hfResult.confidence}%`);
-        } catch (hfErr) {
-          console.warn(`[Phish] HF image analysis failed: ${hfErr.message}`);
+          console.log(`[Phish] Using Gemini Vision for image: ${originalname}`);
+          const geminiResult = await analyzeImageWithGemini(buffer, mimetype, originalname);
+          console.log(`[Phish] Gemini image result: isAI=${geminiResult.isPhishing}, conf=${geminiResult.confidence}%`);
+          await logActivity(req.io, geminiResult.isPhishing ? 'CRITICAL' : 'INFO',
+            `Image deepfake scan (Gemini): ${geminiResult.isPhishing ? 'AI DETECTED' : 'Authentic'} (${geminiResult.confidence}%)`);
+          return res.json({ success: true, data: geminiResult });
+        } catch (geminiErr) {
+          console.warn(`[Phish] Gemini image analysis failed (${geminiErr.message}), falling back to Groq...`);
         }
       } else {
-        console.log('[Phish] HF_API_KEY not set, skipping HuggingFace and using Groq vision directly');
+        console.log('[Phish] GEMINI_API_KEY not set, using Groq vision directly');
       }
 
-      // If HF returned high confidence (>= 75%), return it directly
-      if (hfResult && hfResult.confidence >= 75) {
-        await logActivity(req.io, hfResult.isPhishing ? 'CRITICAL' : 'INFO',
-          `Image deepfake scan (HF): ${hfResult.isPhishing ? 'AI DETECTED' : 'Authentic'} (${hfResult.confidence}%)`);
-        return res.json({ success: true, data: hfResult });
-      }
-
-      // ── FIXED: Groq vision with a prompt that correctly sets isPhishing=true for AI images ──
-      console.log(`[Phish] Using Groq vision for ${originalname}...`);
+      // ── Fallback: Groq Vision ───────────────────────────────────────────────
+      console.log(`[Phish] Using Groq vision fallback for ${originalname}...`);
       try {
         const base64Image = buffer.toString('base64');
         const groqResponse = await axios.post(
@@ -249,21 +244,13 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
                   {
                     type: 'text',
                     text:
-                      'You are an elite digital forensics AI specializing in deepfake and AI-generated image detection.\n\n' +
-                      'YOUR ONLY JOB: Determine if this image was generated or manipulated by AI.\n\n' +
-                      'Set "isPhishing" to TRUE if the image shows ANY of these signs:\n' +
-                      '- Overly smooth, waxy, or plastic-looking skin or fur textures\n' +
-                      '- Eyes that are too large, too detailed, too symmetrical, or have an unnatural glow\n' +
-                      '- Unnatural bokeh, blurred backgrounds with no logical depth-of-field\n' +
-                      '- Backgrounds that look painted, blurry, or inconsistent with the subject\n' +
-                      '- The subject looks like a render, illustration, or 3D model rather than a photo\n' +
-                      '- Any GAN/diffusion artifacts, pixel smearing, or inconsistent lighting\n' +
-                      '- The image depicts something impossible or highly stylized (e.g. animals in human clothes in photorealistic style)\n\n' +
-                      'Set "isPhishing" to FALSE ONLY if this is clearly an unedited real photograph.\n\n' +
-                      'IMPORTANT: "isPhishing" is our internal flag for AI-generated/deepfake content. ' +
-                      'It does NOT mean email phishing. Set it TRUE for AI-generated images.\n\n' +
-                      'Respond ONLY with valid JSON (no markdown, no code blocks):\n' +
-                      '{"isPhishing": true, "confidence": 85, "explanation": "Detailed findings with specific observations in <b>bold</b>."}',
+                      'You are an elite digital forensics AI specializing in deepfake and AI-generated image detection. ' +
+                      'Carefully analyze this image for signs of AI generation or manipulation. ' +
+                      'Check for: unnatural skin/hair/eyes rendering, warped backgrounds, distorted hands/ears/teeth, ' +
+                      'inconsistent lighting, GAN/diffusion artifacts, unnatural bokeh, impossible geometry, ' +
+                      'overly smooth or waxy textures, or uniform noise patterns. ' +
+                      'Respond ONLY with valid JSON (no markdown code blocks): ' +
+                      '{"isPhishing": true/false, "confidence": 0-100, "explanation": "Detailed analysis with specific visual evidence wrapped in <b>tags</b> for key findings."}',
                   },
                   {
                     type: 'image_url',
@@ -277,38 +264,22 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
         );
 
         let content = groqResponse.data.choices[0].message.content;
-        console.log(`[Phish] Raw Groq vision response: ${content.substring(0, 200)}`);
-
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         const groqResult = jsonMatch
           ? JSON.parse(jsonMatch[0])
           : JSON.parse(content.replace(/```json|```/g, '').trim());
 
-        // Merge HF context if it was available but low-confidence
-        if (hfResult) {
-          groqResult.explanation =
-            `<b>[HuggingFace classifier]</b> ${hfResult.isPhishing ? 'AI detected' : 'Appears real'} ` +
-            `(${hfResult.confidence}% — low confidence, deferred to vision model)\n\n` +
-            `<b>[Groq Vision analysis]</b>\n` + groqResult.explanation;
-        }
+        groqResult.explanation =
+          `⚠️ <b>[Gemini unavailable — Groq Vision fallback]</b>\n\n` + groqResult.explanation;
 
         await logActivity(req.io, groqResult.isPhishing ? 'CRITICAL' : 'INFO',
-          `Image deepfake scan (Groq): ${groqResult.isPhishing ? 'AI DETECTED' : 'Authentic'} (${groqResult.confidence}%)`);
+          `Image deepfake scan (Groq fallback): ${groqResult.isPhishing ? 'AI DETECTED' : 'Authentic'} (${groqResult.confidence}%)`);
 
         return res.json({ success: true, data: groqResult });
       } catch (visionErr) {
-        console.error('[Phish] Groq vision failed:', visionErr.response?.data || visionErr.message);
-
-        // If we have any HF result, return it
-        if (hfResult) {
-          hfResult.explanation =
-            '⚠️ Groq vision model unavailable — HuggingFace result (low confidence).\n\n' +
-            hfResult.explanation;
-          return res.json({ success: true, data: hfResult });
-        }
-
+        console.error('[Phish] Groq vision fallback failed:', visionErr.response?.data || visionErr.message);
         return res.status(500).json({
-          error: 'Image analysis failed — both HuggingFace and Groq vision unavailable',
+          error: 'Image analysis failed — both Gemini and Groq vision unavailable',
           details: visionErr.response?.data?.error?.message ?? visionErr.message,
         });
       }
@@ -318,27 +289,29 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
     if (mimetype.startsWith('video/')) {
       console.log(`[Phish] Video detected: ${originalname} (${mimetype})`);
 
-      let videoResult = null;
-      const hfAvailable = !!process.env.HF_API_KEY;
-
-      if (hfAvailable) {
+      // ── Primary: Gemini Vision (File API) ──────────────────────────────────
+      const geminiAvailable = !!process.env.GEMINI_API_KEY;
+      if (geminiAvailable) {
         try {
-          videoResult = await analyzeVideoWithHF(buffer, originalname);
-          console.log(`[Phish] HF video result: isDeepfake=${videoResult.isPhishing}, conf=${videoResult.confidence}%`);
-        } catch (videoErr) {
-          console.warn('[Phish] HF video analysis failed:', videoErr.message);
+          console.log(`[Phish] Using Gemini Vision for video: ${originalname}`);
+          const geminiResult = await analyzeVideoWithGemini(buffer, mimetype, originalname);
+          console.log(`[Phish] Gemini video result: isDeepfake=${geminiResult.isPhishing}, conf=${geminiResult.confidence}%`);
+          await logActivity(req.io, geminiResult.isPhishing ? 'CRITICAL' : 'INFO',
+            `Video deepfake scan (Gemini): ${geminiResult.isPhishing ? 'DEEPFAKE DETECTED' : 'Authentic'} (${geminiResult.confidence}%)`);
+          return res.json({ success: true, data: geminiResult });
+        } catch (geminiErr) {
+          const geminiErrDetail = geminiErr.response?.data?.error?.message ?? geminiErr.message;
+          console.error(`[Phish] Gemini video analysis FAILED:`, geminiErrDetail);
+          if (geminiErr.response?.data) console.error('[Phish] Gemini response body:', JSON.stringify(geminiErr.response.data));
+          // Store for use in fallback banner
+          req._geminiVideoErr = geminiErrDetail;
         }
+      } else {
+        console.log('[Phish] GEMINI_API_KEY not set, using Groq metadata analysis directly');
       }
 
-      // If HF gave a conclusive result (not the "inconclusive" 55% fallback), use it
-      if (videoResult && videoResult.confidence > 60) {
-        await logActivity(req.io, videoResult.isPhishing ? 'CRITICAL' : 'INFO',
-          `Video deepfake scan: ${videoResult.isPhishing ? 'DEEPFAKE DETECTED' : 'Authentic'} (${videoResult.confidence}%)`);
-        return res.json({ success: true, data: videoResult });
-      }
-
-      // Groq text-based metadata analysis as primary/fallback
-      console.log(`[Phish] Running Groq metadata analysis for video: ${originalname}`);
+      // ── Fallback: Groq text-based metadata analysis ─────────────────────────
+      console.log(`[Phish] Running Groq metadata fallback for video: ${originalname}`);
       try {
         const sampleSize = Math.min(buffer.length, 60_000);
         const sampleStrings = buffer.subarray(0, sampleSize).toString('ascii')
@@ -377,25 +350,18 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
           ? JSON.parse(jsonMatch[0])
           : JSON.parse(content.replace(/```json|```/g, '').trim());
 
-        // Prepend any HF inconclusive result context
-        if (videoResult) {
-          groqResult.explanation =
-            `<b>[HuggingFace]</b> Analysis inconclusive (${videoResult.confidence}% — no embedded thumbnail found)\n\n` +
-            `<b>[Groq metadata analysis]</b>\n` + groqResult.explanation;
-        }
+        const geminiReason = req._geminiVideoErr ? ` (${req._geminiVideoErr})` : '';
+        groqResult.explanation =
+          `⚠️ <b>[Gemini unavailable${geminiReason} — Groq metadata fallback]</b>\n\n` + groqResult.explanation;
 
         await logActivity(req.io, groqResult.isPhishing ? 'CRITICAL' : 'INFO',
-          `Video deepfake scan (Groq): ${groqResult.isPhishing ? 'DEEPFAKE DETECTED' : 'Clean'} (${groqResult.confidence}%)`);
+          `Video deepfake scan (Groq fallback): ${groqResult.isPhishing ? 'DEEPFAKE DETECTED' : 'Clean'} (${groqResult.confidence}%)`);
 
         return res.json({ success: true, data: groqResult });
       } catch (groqVideoErr) {
-        console.error('[Phish] Groq video analysis failed:', groqVideoErr.message);
-        // Return HF inconclusive if we have it
-        if (videoResult) {
-          return res.json({ success: true, data: videoResult });
-        }
+        console.error('[Phish] Groq video fallback failed:', groqVideoErr.message);
         return res.status(500).json({
-          error: 'Video analysis failed',
+          error: 'Video analysis failed — both Gemini and Groq unavailable',
           details: groqVideoErr.message,
         });
       }
