@@ -211,7 +211,6 @@ const StatPill = ({ label, value, color }) => (
    MAIN COMPONENT
 ══════════════════════════════════════════════════ */
 const PhishingDetector = () => {
-  /* ── ALL ORIGINAL STATE (unchanged) ── */
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
   const [fileCategory, setFileCategory] = useState(null);
@@ -220,7 +219,6 @@ const PhishingDetector = () => {
   const [activeTab, setActiveTab] = useState('text');
   const fileInputRef = useRef(null);
 
-  /* ── ALL ORIGINAL HANDLERS (unchanged) ── */
   const handleFileSelect = (selectedFile) => {
     if (!selectedFile) return;
     setFile(selectedFile);
@@ -253,20 +251,33 @@ const PhishingDetector = () => {
       const data = await res.json();
 
       if (data.success && data.data) {
-        let isPh = data.data.isPhishing;
-        let conf = data.data.confidence;
-        if (isPh) {
-          conf = 100 - conf;
-          if (conf < 1) conf = 1;
-          if (conf > 49) conf = 15;
-        }
-        setResult({ isPhishing: isPh, confidence: conf, highlighted: data.data.explanation, mode: file ? fileCategory : 'text' });
+        // ── FIX: use the backend values directly, no inversion ──
+        const isPh = data.data.isPhishing;
+        const conf = data.data.confidence;
+        setResult({
+          isPhishing: isPh,
+          confidence: conf,
+          highlighted: data.data.explanation,
+          mode: file ? fileCategory : 'text',
+        });
       } else {
-        setResult({ isPhishing: false, confidence: 0, highlighted: data.details ? `Error: ${JSON.stringify(data.details)}` : (data.error || 'Analysis failed.'), mode: file ? fileCategory : 'text' });
+        setResult({
+          isPhishing: false,
+          confidence: 0,
+          highlighted: data.details
+            ? `Error: ${JSON.stringify(data.details)}`
+            : (data.error || 'Analysis failed.'),
+          mode: file ? fileCategory : 'text',
+        });
       }
     } catch (err) {
       console.error(err);
-      setResult({ isPhishing: false, confidence: 0, highlighted: 'System connection error to deep learning clusters.', mode: 'text' });
+      setResult({
+        isPhishing: false,
+        confidence: 0,
+        highlighted: 'System connection error to deep learning clusters.',
+        mode: 'text',
+      });
     } finally {
       setAnalyzing(false);
     }
