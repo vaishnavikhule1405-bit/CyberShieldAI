@@ -234,7 +234,7 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
         return res.json({ success: true, data: hfResult });
       }
 
-      // ── FIXED: Groq vision with a prompt that correctly sets isPhishing=true for AI images ──
+      // Groq vision analysis (primary when HF not available, fallback otherwise)
       console.log(`[Phish] Using Groq vision for ${originalname}...`);
       try {
         const base64Image = buffer.toString('base64');
@@ -249,21 +249,13 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
                   {
                     type: 'text',
                     text:
-                      'You are an elite digital forensics AI specializing in deepfake and AI-generated image detection.\n\n' +
-                      'YOUR ONLY JOB: Determine if this image was generated or manipulated by AI.\n\n' +
-                      'Set "isPhishing" to TRUE if the image shows ANY of these signs:\n' +
-                      '- Overly smooth, waxy, or plastic-looking skin or fur textures\n' +
-                      '- Eyes that are too large, too detailed, too symmetrical, or have an unnatural glow\n' +
-                      '- Unnatural bokeh, blurred backgrounds with no logical depth-of-field\n' +
-                      '- Backgrounds that look painted, blurry, or inconsistent with the subject\n' +
-                      '- The subject looks like a render, illustration, or 3D model rather than a photo\n' +
-                      '- Any GAN/diffusion artifacts, pixel smearing, or inconsistent lighting\n' +
-                      '- The image depicts something impossible or highly stylized (e.g. animals in human clothes in photorealistic style)\n\n' +
-                      'Set "isPhishing" to FALSE ONLY if this is clearly an unedited real photograph.\n\n' +
-                      'IMPORTANT: "isPhishing" is our internal flag for AI-generated/deepfake content. ' +
-                      'It does NOT mean email phishing. Set it TRUE for AI-generated images.\n\n' +
-                      'Respond ONLY with valid JSON (no markdown, no code blocks):\n' +
-                      '{"isPhishing": true, "confidence": 85, "explanation": "Detailed findings with specific observations in <b>bold</b>."}',
+                      'You are an elite digital forensics AI specializing in deepfake and AI-generated image detection. ' +
+                      'Carefully analyze this image for signs of AI generation or manipulation. ' +
+                      'Check for: unnatural skin/hair/eyes rendering, warped backgrounds, distorted hands/ears/teeth, ' +
+                      'inconsistent lighting, GAN/diffusion artifacts, unnatural bokeh, impossible geometry, ' +
+                      'overly smooth or waxy textures, or uniform noise patterns. ' +
+                      'Respond ONLY with valid JSON (no markdown code blocks): ' +
+                      '{"isPhishing": true/false, "confidence": 0-100, "explanation": "Detailed analysis with specific visual evidence wrapped in <b>tags</b> for key findings."}',
                   },
                   {
                     type: 'image_url',
@@ -277,8 +269,6 @@ router.post('/phish/analyze', upload.single('file'), async (req, res) => {
         );
 
         let content = groqResponse.data.choices[0].message.content;
-        console.log(`[Phish] Raw Groq vision response: ${content.substring(0, 200)}`);
-
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         const groqResult = jsonMatch
           ? JSON.parse(jsonMatch[0])
