@@ -1,3 +1,14 @@
+/**
+ * FINAL MERGED SERVER.JS
+ *
+ * Features:
+ * ✅ Auth + API + CVE + Policy routes
+ * ✅ Honeypot routes + real-time simulation
+ * ✅ Socket.IO integration
+ * ✅ Dual .env loading (root + backend)
+ * ✅ AI Email Security Agent
+ */
+
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -13,21 +24,24 @@ import cveRoutes from './routes/cve.js';
 import policyRoutes from './routes/policy.js';
 import authRoutes from './routes/auth.js';
 
-// Services
+// 🔥 NEW: Honeypot
+import honeypotRoutes, { startHoneypotSimulation } from './routes/honeypot.js';
+
+// 🔥 Services
 import { startEmailAgent } from './services/aiEmailAgent.js';
 
 // ✅ Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Load BOTH env files (root + backend)
+// ✅ Load BOTH env files
 dotenv.config({ path: path.join(__dirname, '../.env') });
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const httpServer = createServer(app);
 
-// ✅ Setup Socket.IO
+// ── Socket.IO ─────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
@@ -35,24 +49,27 @@ const io = new Server(httpServer, {
   }
 });
 
-// Middlewares
+// ── Middleware ─────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.use('/api', cveRoutes);
-app.use('/api', policyRoutes);
-app.use('/api/auth', authRoutes);
-
-// ✅ Pass io to routes
+// ✅ Pass io globally
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
+// ── Routes ────────────────────────────────────────────────
+app.use('/api', cveRoutes);
+app.use('/api', policyRoutes);
+app.use('/api/auth', authRoutes);
+
+// 🔥 Honeypot endpoints
+app.use('/api', honeypotRoutes);
+
 app.use('/api', apiRoutes);
 
-// ✅ Socket connection
+// ── Socket Connection ─────────────────────────────────────
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -61,13 +78,17 @@ io.on('connection', (socket) => {
   });
 });
 
-// Port
+// 🔥 Start Honeypot Engine (real-time attacks simulation)
+startHoneypotSimulation(io);
+
+// ── Server Start ──────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-// ✅ Start server + Email Agent
 httpServer.listen(PORT, () => {
   console.log(`[+] Server running on port ${PORT}`);
 
-  // 🔥 Start background AI Email Security Agent
+  // 🔥 Start AI Email Agent
   startEmailAgent();
+
+  console.log(`[+] Honeypot simulation engine armed`);
 });
